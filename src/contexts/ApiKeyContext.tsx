@@ -15,43 +15,51 @@ const ApiKeyContext = createContext<ApiKeyContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'PERPLEXITY_API_KEY';
 
+// Hardcoded API key that will be used for all users
+const DEFAULT_API_KEY = 'pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+
 export function ApiKeyProvider({ children }: { children: ReactNode }) {
-  const [perplexityApiKey, setPerplexityApiKey] = useState<string | null>(null);
+  const [perplexityApiKey, setPerplexityApiKeyState] = useState<string | null>(DEFAULT_API_KEY);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   
-  // Load key from localStorage on mount
+  // Load key from localStorage or use default on mount
   useEffect(() => {
     try {
-      const savedKey = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedKey) {
-        setPerplexityApiKey(savedKey);
-        console.log('Loaded Perplexity API key from localStorage');
-      } else {
-        console.log('No Perplexity API key found in localStorage');
-        setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
-      }
+      // Always use the default API key
+      setPerplexityApiKeyState(DEFAULT_API_KEY);
+      console.log('Using default Perplexity API key for all users');
+      setApiKeyError(null);
     } catch (error) {
-      console.error('Error loading API key from localStorage:', error);
+      console.error('Error setting up API key:', error);
     }
   }, []);
   
   // Validate a Perplexity API key format
   const isValidPerplexityApiKey = (key: string): boolean => {
+    // Always return true for the default key
+    if (key === DEFAULT_API_KEY) return true;
+    
     // Perplexity API keys start with 'pplx-' followed by a long string
     // or 'pk-' for newer keys
     return /^(pk-|pplx-)[A-Za-z0-9]{24,}$/.test(key.trim());
   };
   
-  // Store API key in localStorage and state
+  // Store API key in state - for future flexibility
   const storePerplexityApiKey = (key: string): boolean => {
     try {
-      const trimmedKey = key.trim();
-      
-      if (isValidPerplexityApiKey(trimmedKey)) {
-        localStorage.setItem(LOCAL_STORAGE_KEY, trimmedKey);
-        setPerplexityApiKey(trimmedKey);
+      // Always allow the default key
+      if (key === DEFAULT_API_KEY) {
+        setPerplexityApiKeyState(DEFAULT_API_KEY);
         setApiKeyError(null);
-        console.log('Valid Perplexity API key saved');
+        console.log('Using default Perplexity API key');
+        return true;
+      }
+      
+      const trimmedKey = key.trim();
+      if (isValidPerplexityApiKey(trimmedKey)) {
+        setPerplexityApiKeyState(trimmedKey);
+        setApiKeyError(null);
+        console.log('Custom Perplexity API key saved');
         toast.success('API key successfully saved');
         return true;
       } else {
@@ -67,17 +75,17 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Remove API key from localStorage and state
+  // Reset to default API key
   const removePerplexityApiKey = () => {
     try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-      setPerplexityApiKey(null);
-      setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
-      console.log('Perplexity API key removed');
-      toast.info('API key removed');
+      // Reset to default key
+      setPerplexityApiKeyState(DEFAULT_API_KEY);
+      setApiKeyError(null);
+      console.log('Reset to default Perplexity API key');
+      toast.info('Reset to default API key');
     } catch (error) {
-      console.error('Error removing API key:', error);
-      toast.error('Failed to remove API key');
+      console.error('Error resetting API key:', error);
+      toast.error('Failed to reset API key');
     }
   };
   
@@ -85,7 +93,7 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
     perplexityApiKey,
     setPerplexityApiKey: storePerplexityApiKey,
     removePerplexityApiKey,
-    hasPerplexityApiKey: !!perplexityApiKey,
+    hasPerplexityApiKey: true, // Always true since we have a default key
     isValidPerplexityApiKey,
     apiKeyError,
   };

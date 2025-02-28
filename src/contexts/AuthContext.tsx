@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             if (error) throw error;
             setProfile(profileData);
+            console.log('Profile loaded:', profileData);
           } catch (error) {
             console.error('Error fetching profile:', error);
           }
@@ -76,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (error) throw error;
           setProfile(profileData);
+          console.log('Profile updated on auth change:', profileData);
         } catch (error) {
           console.error('Error fetching profile:', error);
           setProfile(null);
@@ -138,8 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       console.log('Signing out...');
       
-      // First, make sure to delete any localStorage values we want to clear
-      // localStorage.removeItem('PERPLEXITY_API_KEY'); // Uncomment if you want to clear API key on signout
+      // Don't clear API key on signout
+      // localStorage.removeItem('PERPLEXITY_API_KEY');
       
       const { error } = await supabase.auth.signOut();
       if (error) {
