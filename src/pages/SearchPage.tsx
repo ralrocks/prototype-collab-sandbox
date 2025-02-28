@@ -1,20 +1,21 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
-import { Search, Plane, MapPin, Calendar, Info, User, RotateCcw } from 'lucide-react';
+import { Search, Plane, MapPin, Calendar, Info, User, RotateCcw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { getDestinationInfo } from '@/services/travelApi';
+import { getDestinationInfo, searchCities } from '@/services/travelApi';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBookingStore } from '@/stores/bookingStore';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 
 const popularDestinations = [
   { code: 'JFK', city: 'New York', image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80' },
@@ -24,28 +25,120 @@ const popularDestinations = [
   { code: 'SFO', city: 'San Francisco', image: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80' },
 ];
 
+interface LocationOption {
+  code: string;
+  name: string;
+}
+
 const SearchPage = () => {
-  const [fromLocation, setFromLocation] = useState('LAX');
-  const [toLocation, setToLocation] = useState('JFK');
+  // Form state
+  const [fromLocationInput, setFromLocationInput] = useState('');
+  const [toLocationInput, setToLocationInput] = useState('');
+  const [fromLocationCode, setFromLocationCode] = useState('LAX');
+  const [toLocationCode, setToLocationCode] = useState('JFK');
+  const [fromLocationName, setFromLocationName] = useState('Los Angeles');
+  const [toLocationName, setToLocationName] = useState('New York');
+  
+  // Search results state
+  const [fromOptions, setFromOptions] = useState<LocationOption[]>([]);
+  const [toOptions, setToOptions] = useState<LocationOption[]>([]);
+  const [isSearchingFrom, setIsSearchingFrom] = useState(false);
+  const [isSearchingTo, setIsSearchingTo] = useState(false);
+  const [fromPopoverOpen, setFromPopoverOpen] = useState(false);
+  const [toPopoverOpen, setToPopoverOpen] = useState(false);
+
+  // Date state
   const [departureDate, setDepartureDate] = useState<Date | undefined>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default: 1 week from now
   );
   const [returnDate, setReturnDate] = useState<Date | undefined>(
     new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // Default: 2 weeks from now
   );
+  
+  // Other state
   const [destinationInfo, setDestinationInfo] = useState<string>('');
   const [selectedDestination, setSelectedDestination] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   
+  // Hooks
   const { user } = useAuth();
   const { setIsRoundTrip: setGlobalIsRoundTrip } = useBookingStore();
   const navigate = useNavigate();
+  const fromSearchTimeoutRef = useRef<number | null>(null);
+  const toSearchTimeoutRef = useRef<number | null>(null);
 
   // Update global state when round trip option changes
   useEffect(() => {
     setGlobalIsRoundTrip(isRoundTrip);
   }, [isRoundTrip, setGlobalIsRoundTrip]);
+
+  // Debounced search for locations
+  const searchFromLocations = (query: string) => {
+    setFromLocationInput(query);
+    setIsSearchingFrom(true);
+    
+    if (fromSearchTimeoutRef.current) {
+      clearTimeout(fromSearchTimeoutRef.current);
+    }
+
+    fromSearchTimeoutRef.current = window.setTimeout(async () => {
+      if (query.length > 1) {
+        const results = await searchCities(query);
+        setFromOptions(results);
+      } else {
+        setFromOptions([]);
+      }
+      setIsSearchingFrom(false);
+    }, 300);
+  };
+
+  const searchToLocations = (query: string) => {
+    setToLocationInput(query);
+    setIsSearchingTo(true);
+    
+    if (toSearchTimeoutRef.current) {
+      clearTimeout(toSearchTimeoutRef.current);
+    }
+
+    toSearchTimeoutRef.current = window.setTimeout(async () => {
+      if (query.length > 1) {
+        const results = await searchCities(query);
+        setToOptions(results);
+      } else {
+        setToOptions([]);
+      }
+      setIsSearchingTo(false);
+    }, 300);
+  };
+
+  // Handle location selection
+  const selectFromLocation = (location: LocationOption) => {
+    setFromLocationCode(location.code);
+    setFromLocationName(location.name);
+    setFromLocationInput(location.name);
+    setFromPopoverOpen(false);
+  };
+
+  const selectToLocation = (location: LocationOption) => {
+    setToLocationCode(location.code);
+    setToLocationName(location.name);
+    setToLocationInput(location.name);
+    setToPopoverOpen(false);
+  };
+
+  // Clear location selections
+  const clearFromLocation = () => {
+    setFromLocationInput('');
+    setFromLocationCode('');
+    setFromLocationName('');
+  };
+
+  const clearToLocation = () => {
+    setToLocationInput('');
+    setToLocationCode('');
+    setToLocationName('');
+  };
 
   // Fetch information about a destination using Perplexity API integration
   const fetchDestinationInfo = async (destination: string) => {
@@ -71,8 +164,8 @@ const SearchPage = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!fromLocation.trim() || !toLocation.trim()) {
-      toast.error('Please enter both departure and arrival locations');
+    if (!fromLocationCode || !toLocationCode) {
+      toast.error('Please select both departure and arrival locations');
       return;
     }
     
@@ -92,8 +185,10 @@ const SearchPage = () => {
     }
     
     // Store search parameters in localStorage
-    localStorage.setItem('fromLocation', fromLocation);
-    localStorage.setItem('toLocation', toLocation);
+    localStorage.setItem('fromLocation', fromLocationCode);
+    localStorage.setItem('toLocation', toLocationCode);
+    localStorage.setItem('fromLocationName', fromLocationName);
+    localStorage.setItem('toLocationName', toLocationName);
     localStorage.setItem('departureDate', departureDate.toISOString().split('T')[0]);
     
     if (isRoundTrip && returnDate) {
@@ -104,7 +199,7 @@ const SearchPage = () => {
       localStorage.setItem('tripType', 'oneway');
     }
     
-    toast.success(`Searching flights from ${fromLocation} to ${toLocation}`);
+    toast.success(`Searching flights from ${fromLocationName} to ${toLocationName}`);
     navigate('/flights');
   };
 
@@ -141,35 +236,135 @@ const SearchPage = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="fromLocation">From (Airport Code)</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                      <Input
-                        id="fromLocation"
-                        type="text"
-                        value={fromLocation}
-                        onChange={(e) => setFromLocation(e.target.value.toUpperCase())}
-                        placeholder="LAX"
-                        className="pl-10"
-                        maxLength={3}
-                      />
-                    </div>
+                    <Label htmlFor="fromLocation">From (City or Airport)</Label>
+                    <Popover open={fromPopoverOpen} onOpenChange={setFromPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                          <Input
+                            id="fromLocation"
+                            value={fromLocationInput}
+                            onChange={(e) => searchFromLocations(e.target.value)}
+                            placeholder="Search cities or airports"
+                            className="pl-10 pr-10"
+                            onClick={() => setFromPopoverOpen(true)}
+                          />
+                          {fromLocationInput && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                clearFromLocation();
+                              }}
+                            >
+                              <X size={16} />
+                            </Button>
+                          )}
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0" align="start" sideOffset={5}>
+                        <Command>
+                          <CommandInput 
+                            placeholder="Search cities or airports" 
+                            value={fromLocationInput}
+                            onValueChange={searchFromLocations}
+                            className="h-9"
+                          />
+                          {isSearchingFrom && <div className="p-2 text-sm text-center">Searching...</div>}
+                          {!isSearchingFrom && (
+                            <>
+                              <CommandEmpty>No locations found</CommandEmpty>
+                              <CommandGroup>
+                                {fromOptions.map((option) => (
+                                  <CommandItem
+                                    key={option.code}
+                                    value={option.name}
+                                    onSelect={() => selectFromLocation(option)}
+                                  >
+                                    <div className="flex items-center">
+                                      <MapPin className="mr-2 h-4 w-4 text-gray-400" />
+                                      <span>{option.name}</span>
+                                      <Badge variant="outline" className="ml-2">{option.code}</Badge>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </>
+                          )}
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {fromLocationCode && !fromLocationInput && (
+                      <p className="text-xs text-gray-500 mt-1">Selected: {fromLocationName} ({fromLocationCode})</p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="toLocation">To (Airport Code)</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                      <Input
-                        id="toLocation"
-                        type="text"
-                        value={toLocation}
-                        onChange={(e) => setToLocation(e.target.value.toUpperCase())}
-                        placeholder="JFK"
-                        className="pl-10"
-                        maxLength={3}
-                      />
-                    </div>
+                    <Label htmlFor="toLocation">To (City or Airport)</Label>
+                    <Popover open={toPopoverOpen} onOpenChange={setToPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                          <Input
+                            id="toLocation"
+                            value={toLocationInput}
+                            onChange={(e) => searchToLocations(e.target.value)}
+                            placeholder="Search cities or airports"
+                            className="pl-10 pr-10"
+                            onClick={() => setToPopoverOpen(true)}
+                          />
+                          {toLocationInput && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                clearToLocation();
+                              }}
+                            >
+                              <X size={16} />
+                            </Button>
+                          )}
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0" align="start" sideOffset={5}>
+                        <Command>
+                          <CommandInput 
+                            placeholder="Search cities or airports" 
+                            value={toLocationInput}
+                            onValueChange={searchToLocations}
+                            className="h-9"
+                          />
+                          {isSearchingTo && <div className="p-2 text-sm text-center">Searching...</div>}
+                          {!isSearchingTo && (
+                            <>
+                              <CommandEmpty>No locations found</CommandEmpty>
+                              <CommandGroup>
+                                {toOptions.map((option) => (
+                                  <CommandItem
+                                    key={option.code}
+                                    value={option.name}
+                                    onSelect={() => selectToLocation(option)}
+                                  >
+                                    <div className="flex items-center">
+                                      <MapPin className="mr-2 h-4 w-4 text-gray-400" />
+                                      <span>{option.name}</span>
+                                      <Badge variant="outline" className="ml-2">{option.code}</Badge>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </>
+                          )}
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {toLocationCode && !toLocationInput && (
+                      <p className="text-xs text-gray-500 mt-1">Selected: {toLocationName} ({toLocationCode})</p>
+                    )}
                   </div>
                 </div>
 

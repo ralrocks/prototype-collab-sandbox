@@ -159,6 +159,8 @@ const FlightsPage = () => {
 
   const from = localStorage.getItem('fromLocation') || 'LAX';
   const to = localStorage.getItem('toLocation') || 'JFK';
+  const fromName = localStorage.getItem('fromLocationName') || 'Los Angeles';
+  const toName = localStorage.getItem('toLocationName') || 'New York';
   const departureDate = localStorage.getItem('departureDate') 
     ? new Date(localStorage.getItem('departureDate')!).toLocaleDateString('en-US', { 
         year: 'numeric', 
@@ -184,7 +186,7 @@ const FlightsPage = () => {
 
   return (
     <AuthGuard>
-      <WebLayout title={`Flights: ${from} to ${to}`} showBackButton>
+      <WebLayout title={`Flights: ${fromName} to ${toName}`} showBackButton>
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -194,13 +196,18 @@ const FlightsPage = () => {
                   <div className="flex items-center text-gray-600 mb-2">
                     <Badge variant="outline" className="mr-2 bg-blue-50">Round Trip</Badge>
                     <ArrowLeftRight className="h-4 w-4 mr-2" />
-                    {from} ↔ {to}
+                    {fromName} ({from}) ↔ {toName} ({to})
                   </div>
                 ) : (
-                  <p className="text-gray-600 flex items-center">
-                    <Calendar className="mr-2" size={16} />
-                    Departing {departureDate}
-                  </p>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-gray-600 flex items-center">
+                      <Calendar className="mr-2" size={16} />
+                      Departing {departureDate}
+                    </p>
+                    <p className="text-gray-600 text-sm">
+                      {fromName} ({from}) to {toName} ({to})
+                    </p>
+                  </div>
                 )}
               </div>
               <div className="flex items-center space-x-4">
@@ -245,7 +252,7 @@ const FlightsPage = () => {
               <TabsContent value="outbound" className="space-y-4">
                 <div className="bg-blue-50 p-4 rounded-md mb-4 flex items-center text-blue-700">
                   <Calendar className="mr-2 h-5 w-5" />
-                  <span>Outbound: <strong>{departureDate}</strong> - {from} to {to}</span>
+                  <span>Outbound: <strong>{departureDate}</strong> - {fromName} to {toName}</span>
                 </div>
                 
                 {renderFlightList(sortedOutboundFlights, 'outbound')}
@@ -254,7 +261,7 @@ const FlightsPage = () => {
               <TabsContent value="return" className="space-y-4">
                 <div className="bg-blue-50 p-4 rounded-md mb-4 flex items-center text-blue-700">
                   <Calendar className="mr-2 h-5 w-5" />
-                  <span>Return: <strong>{returnDate}</strong> - {to} to {from}</span>
+                  <span>Return: <strong>{returnDate}</strong> - {toName} to {fromName}</span>
                 </div>
                 
                 {renderFlightList(sortedReturnFlights, 'return')}
@@ -323,11 +330,11 @@ const FlightsPage = () => {
                 
                 <div className="text-center">
                   <div className="flex items-center justify-center space-x-2">
-                    <span className="font-medium">{direction === 'outbound' ? from : to}</span>
+                    <span className="font-medium">{direction === 'outbound' ? fromName : toName}</span>
                     <div className="w-12 h-px bg-gray-300 relative">
                       <div className="absolute w-2 h-2 bg-gray-300 rounded-full -top-[3px] -right-1"></div>
                     </div>
-                    <span className="font-medium">{direction === 'outbound' ? to : from}</span>
+                    <span className="font-medium">{direction === 'outbound' ? toName : fromName}</span>
                   </div>
                   <div className="flex items-center justify-center mt-1 text-sm text-gray-500">
                     <Clock size={14} className="mr-1" />
