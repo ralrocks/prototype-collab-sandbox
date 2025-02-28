@@ -7,6 +7,7 @@ import PhoneFrame from '@/components/PhoneFrame';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
 import { fetchFlights, transformFlightData } from '@/services/travelApi';
+import { Flight } from '@/types';
 
 const FlightsPage = () => {
   const navigate = useNavigate();

@@ -1,12 +1,6 @@
 
 import { create } from 'zustand';
-
-interface Flight {
-  id: number;
-  attribute: string;
-  question1: string;
-  price: number;
-}
+import { Flight } from '@/types';
 
 interface Housing {
   id: number;

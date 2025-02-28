@@ -69,6 +69,9 @@ export const fetchFlights = async (from: string, to: string): Promise<ApiFlightD
   ];
 };
 
+// Import the Flight type from types directory
+import { Flight } from '@/types';
+
 // Helper function to transform API data to our application's format
 export const transformFlightData = (apiData: ApiFlightData[]): Flight[] => {
   return apiData.map((flight, index) => ({
