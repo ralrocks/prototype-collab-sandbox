@@ -2,13 +2,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, ArrowRight, Loader2 } from 'lucide-react';
+import { Check, ArrowRight, Loader2, Calendar, Clock, Plane, Info } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
 import { fetchFlights, transformFlightData } from '@/services/travelApi';
 import { Flight } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Badge } from '@/components/ui/badge';
 
 const FlightsPage = () => {
   const navigate = useNavigate();
@@ -16,6 +23,7 @@ const FlightsPage = () => {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'price' | 'time'>('price');
 
   useEffect(() => {
     const getFlights = async () => {
@@ -23,11 +31,10 @@ const FlightsPage = () => {
         setLoading(true);
         const from = localStorage.getItem('fromLocation') || 'LAX';
         const to = localStorage.getItem('toLocation') || 'JFK';
+        const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
         
-        const apiFlightData = await fetchFlights(from, to);
-        const transformedFlights = transformFlightData(apiFlightData);
-        
-        setFlights(transformedFlights);
+        const apiFlightData = await fetchFlights(from, to, departureDate);
+        setFlights(apiFlightData);
         setError(null);
       } catch (err) {
         console.error('Error fetching flights:', err);
@@ -54,13 +61,24 @@ const FlightsPage = () => {
     navigate('/accommodations');
   };
 
+  const sortedFlights = [...flights].sort((a, b) => {
+    if (sortBy === 'price') {
+      return a.price - b.price;
+    }
+    // Sort by departure time if time is selected
+    if (a.details?.departureTime && b.details?.departureTime) {
+      return new Date(a.details.departureTime).getTime() - new Date(b.details.departureTime).getTime();
+    }
+    return 0;
+  });
+
   if (loading) {
     return (
       <WebLayout title="Loading Flights..." showBackButton>
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 size={48} className="animate-spin text-primary mb-4" />
           <p className="text-center text-gray-600">
-            Fetching available flights...
+            Searching for the best flight deals...
           </p>
         </div>
       </WebLayout>
@@ -84,57 +102,154 @@ const FlightsPage = () => {
 
   const from = localStorage.getItem('fromLocation') || 'LAX';
   const to = localStorage.getItem('toLocation') || 'JFK';
+  const departureDate = localStorage.getItem('departureDate') 
+    ? new Date(localStorage.getItem('departureDate')!).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }) 
+    : 'Selected date';
+
+  const formatDuration = (duration: string) => {
+    // Simple PT5H30M format parser
+    const hours = duration.match(/(\d+)H/)?.[1] || '0';
+    const minutes = duration.match(/(\d+)M/)?.[1] || '0';
+    return `${hours}h ${minutes}m`;
+  };
 
   return (
     <WebLayout title={`Flights: ${from} to ${to}`} showBackButton>
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-6">Select Your Flight</h2>
-          
-          <Card>
-            <div className="overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Airline</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {flights.length > 0 ? (
-                    flights.map((flight) => (
-                      <tr 
-                        key={flight.id} 
-                        onClick={() => handleFlightSelect(flight)}
-                        className={`hover:bg-gray-50 cursor-pointer ${
-                          selectedFlight?.id === flight.id ? 'bg-green-50' : ''
-                        }`}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{flight.attribute}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{flight.question1}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">${flight.price}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <span className={`p-2 rounded-full ${selectedFlight?.id === flight.id ? 'bg-green-100 text-green-600' : 'text-gray-400'}`}>
-                            {selectedFlight?.id === flight.id ? (
-                              <Check size={18} />
-                            ) : ''}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                        No flights available for this route. Try another search.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold mb-1">Select Your Flight</h2>
+              <p className="text-gray-600 flex items-center">
+                <Calendar className="mr-2" size={16} />
+                Departing {departureDate}
+              </p>
             </div>
-          </Card>
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant={sortBy === 'price' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setSortBy('price')}
+              >
+                Sort by Price
+              </Button>
+              <Button 
+                variant={sortBy === 'time' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setSortBy('time')}
+              >
+                Sort by Time
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-4 mb-8">
+          {sortedFlights.length > 0 ? (
+            sortedFlights.map((flight) => (
+              <Card 
+                key={flight.id} 
+                className={`hover:shadow-md transition-all cursor-pointer border-2 ${
+                  selectedFlight?.id === flight.id ? 'border-green-500' : 'border-transparent'
+                }`}
+                onClick={() => handleFlightSelect(flight)}
+              >
+                <CardContent className="p-0">
+                  <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mr-4">
+                        <Plane className="text-gray-600" size={24} />
+                      </div>
+                      <div>
+                        <h3 className="font-medium">{flight.attribute}</h3>
+                        <p className="text-sm text-gray-500">
+                          {flight.details?.flightNumber}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center">
+                      <div className="flex items-center justify-center space-x-2">
+                        <span className="font-medium">{from}</span>
+                        <div className="w-12 h-px bg-gray-300 relative">
+                          <div className="absolute w-2 h-2 bg-gray-300 rounded-full -top-[3px] -right-1"></div>
+                        </div>
+                        <span className="font-medium">{to}</span>
+                      </div>
+                      <div className="flex items-center justify-center mt-1 text-sm text-gray-500">
+                        <Clock size={14} className="mr-1" />
+                        {flight.details ? formatDuration(flight.details.duration) : "5h 30m"}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-lg font-bold">${flight.price}</span>
+                        <p className="text-xs text-gray-500">per person</p>
+                      </div>
+                      <div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant={selectedFlight?.id === flight.id ? "default" : "outline"}
+                                className={selectedFlight?.id === flight.id ? "bg-green-500 hover:bg-green-600" : ""}
+                              >
+                                {selectedFlight?.id === flight.id ? (
+                                  <>
+                                    <Check size={16} className="mr-1" />
+                                    Selected
+                                  </>
+                                ) : (
+                                  "Select"
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {selectedFlight?.id === flight.id 
+                                ? "This flight is selected" 
+                                : "Click to select this flight"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {flight.details && (
+                    <div className="border-t px-4 md:px-6 py-3 bg-gray-50 flex flex-wrap gap-3">
+                      <Badge variant="outline" className="bg-white">
+                        <Clock size={14} className="mr-1" /> {new Date(flight.details.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </Badge>
+                      <Badge variant="outline" className="bg-white">
+                        {flight.details.cabin}
+                      </Badge>
+                      <Badge variant="outline" className="bg-white">
+                        {flight.details.stops === 0 ? 'Nonstop' : `${flight.details.stops} stop${flight.details.stops > 1 ? 's' : ''}`}
+                      </Badge>
+                      <Badge variant="outline" className="bg-white">
+                        <Info size={14} className="mr-1" /> Includes 1 carry-on bag
+                      </Badge>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <p className="text-gray-500 mb-4">No flights available for this route. Try another search.</p>
+                <Button onClick={() => navigate('/')}>
+                  Back to Search
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
         
         <div className="flex justify-end">

@@ -1,15 +1,17 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowRight, Plus, Check, Bed, Coffee, Wifi } from 'lucide-react';
+import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2 } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent } from '@/components/ui/card';
 import { useBookingStore } from '@/stores/bookingStore';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { fetchHotels } from '@/services/travelApi';
+import { Hotel } from '@/types';
 
-interface Housing {
+interface HousingOption {
   id: number;
   title: string;
   bulletPoints: string[];
@@ -18,110 +20,227 @@ interface Housing {
 
 const AccommodationsPage = () => {
   const navigate = useNavigate();
-  const { selectedHousing, addHousing, removeHousing } = useBookingStore();
-  
-  const [housingOptions] = useState<Housing[]>([
-    { 
-      id: 1, 
-      title: 'Clothing wildlife for gf', 
-      bulletPoints: ['Slighting & Deliciousness', 'Ocean view', 'WiFi included'], 
-      price: 80
-    },
-    { 
-      id: 2, 
-      title: 'Downtown Luxury Suite', 
-      bulletPoints: ['Walking distance to attractions', 'Kitchen & laundry', 'Fitness center'], 
-      price: 120
-    },
-    { 
-      id: 3, 
-      title: 'Historic District Apartment', 
-      bulletPoints: ['Near museums & restaurants', 'Cozy atmosphere', 'Local experience'], 
-      price: 95
-    },
-    { 
-      id: 4, 
-      title: 'Seaside Cottage Retreat', 
-      bulletPoints: ['Beach access', 'Private patio', 'Fully equipped kitchen'], 
-      price: 150
-    },
-  ]);
+  const { selectedFlight, selectedHousing, setSelectedHousing } = useBookingStore();
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const isHousingSelected = (id: number) => {
-    return selectedHousing.some(h => h.id === id);
+  useEffect(() => {
+    // Redirect if no flight is selected
+    if (!selectedFlight) {
+      toast.error("Please select a flight first");
+      navigate('/flights');
+      return;
+    }
+
+    const fetchHotelData = async () => {
+      try {
+        setLoading(true);
+        const to = localStorage.getItem('toLocation') || 'JFK';
+        const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
+        
+        // Calculate a return date (5 days after departure)
+        const departureObj = new Date(departureDate);
+        const returnObj = new Date(departureObj);
+        returnObj.setDate(departureObj.getDate() + 5);
+        const returnDate = returnObj.toISOString().split('T')[0];
+        
+        // Get destination city name based on airport code
+        const cityMap: Record<string, string> = {
+          'JFK': 'New York',
+          'LAX': 'Los Angeles',
+          'MIA': 'Miami',
+          'ORD': 'Chicago',
+          'SFO': 'San Francisco',
+          // Add more mappings as needed
+        };
+        
+        const city = cityMap[to] || 'New York';
+        
+        const hotelData = await fetchHotels(city, departureDate, returnDate);
+        setHotels(hotelData);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching hotels:', err);
+        setError('Failed to load hotel data. Please try again.');
+        toast.error('Failed to load hotels');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchHotelData();
+  }, [selectedFlight, navigate]);
+
+  // Convert Hotel objects to HousingOption format for compatibility with existing bookingStore
+  const convertToHousingOption = (hotel: Hotel): HousingOption => {
+    return {
+      id: hotel.id,
+      title: hotel.name,
+      bulletPoints: [
+        `${hotel.rating}/5 stars - ${hotel.location}`,
+        ...hotel.amenities
+      ],
+      price: hotel.price
+    };
   };
 
-  const toggleHousingSelection = (housing: Housing) => {
-    if (isHousingSelected(housing.id)) {
-      removeHousing(housing.id);
+  const isHousingSelected = (hotelId: number) => {
+    return selectedHousing.some(h => h.id === hotelId);
+  };
+
+  const handleHousingToggle = (hotel: Hotel) => {
+    const housingOption = convertToHousingOption(hotel);
+    
+    if (isHousingSelected(hotel.id)) {
+      setSelectedHousing(selectedHousing.filter(h => h.id !== hotel.id));
+      toast.info(`Removed ${hotel.name} from selection`);
     } else {
-      addHousing(housing);
+      setSelectedHousing([...selectedHousing, housingOption]);
+      toast.success(`Added ${hotel.name} to selection`);
     }
   };
 
   const handleContinue = () => {
     if (selectedHousing.length === 0) {
-      toast.error("Please select at least one housing option!");
+      toast.error("Please select at least one accommodation!");
       return;
     }
     navigate('/checkout');
   };
 
+  const renderAmenityIcon = (amenity: string) => {
+    if (amenity.includes('WiFi')) return <Wifi size={16} className="mr-1" />;
+    if (amenity.includes('Breakfast')) return <Coffee size={16} className="mr-1" />;
+    if (amenity.includes('Restaurant')) return <Utensils size={16} className="mr-1" />;
+    if (amenity.includes('Gym')) return <Dumbbell size={16} className="mr-1" />;
+    return null;
+  };
+
+  if (loading) {
+    return (
+      <WebLayout title="Loading Accommodations..." showBackButton>
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 size={48} className="animate-spin text-primary mb-4" />
+          <p className="text-center text-gray-600">
+            Searching for the best accommodations...
+          </p>
+        </div>
+      </WebLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <WebLayout title="Error" showBackButton>
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </WebLayout>
+    );
+  }
+
   return (
-    <WebLayout title="Select Housing Options" showBackButton>
-      <div className="max-w-6xl mx-auto">
-        <h2 className="text-2xl font-semibold mb-6">Select Your Accommodations</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {housingOptions.map((housing) => {
-            const selected = isHousingSelected(housing.id);
-            return (
+    <WebLayout title="Select Accommodations" showBackButton>
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold mb-6">Select Your Accommodations</h2>
+          <p className="text-gray-600 mb-4">
+            Choose where you'll stay during your trip. You can select multiple options.
+          </p>
+          
+          <div className="space-y-6">
+            {hotels.map((hotel) => (
               <Card 
-                key={housing.id} 
-                className={`overflow-hidden hover:shadow-md transition-all ${
-                  selected ? 'ring-2 ring-green-500 ring-opacity-50' : ''
+                key={hotel.id} 
+                className={`hover:shadow-md transition-all ${
+                  isHousingSelected(hotel.id) ? 'border-2 border-green-500' : ''
                 }`}
               >
-                <div className="h-48 bg-gray-200 flex items-center justify-center">
-                  <Bed size={32} className="text-gray-400" />
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-medium text-lg mb-2">{housing.title}</h3>
-                  <ul className="space-y-2 mb-4">
-                    {housing.bulletPoints.map((point, i) => (
-                      <li key={i} className="flex items-start text-sm text-gray-600">
-                        {i === 0 && <Coffee size={16} className="mr-2 mt-0.5 flex-shrink-0" />}
-                        {i === 1 && <Bed size={16} className="mr-2 mt-0.5 flex-shrink-0" />}
-                        {i === 2 && <Wifi size={16} className="mr-2 mt-0.5 flex-shrink-0" />}
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
-                  <Badge variant="outline" className="font-medium">
-                    ${housing.price}/night
-                  </Badge>
+                <CardContent className="p-0">
+                  <div className="flex flex-col md:flex-row">
+                    <div className="md:w-1/3 h-48 md:h-auto bg-gray-200 relative overflow-hidden">
+                      {hotel.image ? (
+                        <img 
+                          src={hotel.image} 
+                          alt={hotel.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <p className="text-gray-400">No image</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="p-4 md:p-6 md:w-2/3 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="text-lg font-semibold">{hotel.name}</h3>
+                          <div className="flex items-center">
+                            <Star size={16} className="text-yellow-400 fill-yellow-400 mr-1" />
+                            <span>{hotel.rating}</span>
+                          </div>
+                        </div>
+                        
+                        <p className="text-gray-600 mb-4">{hotel.location}</p>
+                        
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {hotel.amenities.map((amenity, idx) => (
+                            <span 
+                              key={idx} 
+                              className="bg-gray-100 text-gray-800 text-xs py-1 px-2 rounded-full flex items-center"
+                            >
+                              {renderAmenityIcon(amenity)}
+                              {amenity}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-4">
+                        <div>
+                          <span className="text-lg font-bold">${hotel.price}</span>
+                          <span className="text-gray-600 text-sm"> / night</span>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <Checkbox
+                            id={`hotel-${hotel.id}`}
+                            checked={isHousingSelected(hotel.id)}
+                            onCheckedChange={() => handleHousingToggle(hotel)}
+                            className="mr-2"
+                          />
+                          <label 
+                            htmlFor={`hotel-${hotel.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {isHousingSelected(hotel.id) ? 'Selected' : 'Select'}
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
-                <CardFooter className="p-4 pt-0">
-                  <Button
-                    onClick={() => toggleHousingSelection(housing)}
-                    variant={selected ? "outline" : "default"}
-                    className={`w-full ${
-                      selected ? 'border-green-500 text-green-600' : ''
-                    }`}
-                  >
-                    {selected ? (
-                      <>Added <Check size={16} className="ml-1" /></>
-                    ) : (
-                      <>Add to Trip <Plus size={16} className="ml-1" /></>
-                    )}
-                  </Button>
-                </CardFooter>
               </Card>
-            );
-          })}
+            ))}
+          </div>
         </div>
         
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <div>
+            {selectedHousing.length > 0 && (
+              <p className="text-gray-600">
+                Selected {selectedHousing.length} accommodation{selectedHousing.length !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+          
           <Button
             onClick={handleContinue}
             className="px-6"
