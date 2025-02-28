@@ -10,7 +10,6 @@ import AccommodationsPage from "./pages/AccommodationsPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import BillingPage from "./pages/BillingPage";
 import ConfirmationPage from "./pages/ConfirmationPage";
-import ItineraryPage from "./pages/ItineraryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,7 +27,6 @@ const App = () => (
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/confirmation" element={<ConfirmationPage />} />
-          <Route path="/itinerary" element={<ItineraryPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

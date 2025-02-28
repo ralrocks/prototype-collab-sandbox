@@ -1,163 +1,122 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { ArrowRight, Plus, Check } from 'lucide-react';
 import PhoneFrame from '@/components/PhoneFrame';
-import { Heart, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useBookingStore } from '@/stores/bookingStore';
 
-interface Accommodation {
+interface Housing {
   id: number;
-  type: string;
-  description: string;
+  title: string;
+  bulletPoints: string[];
   price: number;
-  rating: number;
-  reviews: number;
-  liked: boolean;
-  selected: boolean;
 }
 
 const AccommodationsPage = () => {
   const navigate = useNavigate();
+  const { selectedHousing, addHousing, removeHousing } = useBookingStore();
   
-  const [accommodations, setAccommodations] = useState<Accommodation[]>([
+  const [housingOptions] = useState<Housing[]>([
     { 
       id: 1, 
-      type: 'Apartment', 
-      description: '1 queen + 2 bedrooms • 2 bathrooms • WiFi • Kitchen • theatre', 
-      price: 125, 
-      rating: 4.8, 
-      reviews: 34,
-      liked: false,
-      selected: false
+      title: 'Clothing wildlife for gf', 
+      bulletPoints: ['Slighting & Deliciousness', 'Ocean view', 'WiFi included'], 
+      price: 80
     },
     { 
       id: 2, 
-      type: 'Apartment', 
-      description: '1 queen + 2 bedrooms • 2 bathrooms • WiFi • Kitchen • theatre', 
-      price: 145, 
-      rating: 4.8, 
-      reviews: 26,
-      liked: false,
-      selected: false
+      title: 'Downtown Luxury Suite', 
+      bulletPoints: ['Walking distance to attractions', 'Kitchen & laundry', 'Fitness center'], 
+      price: 120
     },
     { 
       id: 3, 
-      type: 'Apartment', 
-      description: '1 queen + 2 bedrooms • 2 bathrooms • WiFi • Kitchen • theatre', 
-      price: 180, 
-      rating: 4.9, 
-      reviews: 42,
-      liked: false,
-      selected: false
+      title: 'Historic District Apartment', 
+      bulletPoints: ['Near museums & restaurants', 'Cozy atmosphere', 'Local experience'], 
+      price: 95
     },
     { 
       id: 4, 
-      type: 'Apartment', 
-      description: '1 queen + 2 bedrooms • 2 bathrooms • WiFi • Kitchen • theatre', 
-      price: 155, 
-      rating: 4.6, 
-      reviews: 19,
-      liked: false,
-      selected: false
+      title: 'Seaside Cottage Retreat', 
+      bulletPoints: ['Beach access', 'Private patio', 'Fully equipped kitchen'], 
+      price: 150
     },
-    { 
-      id: 5, 
-      type: 'Apartment', 
-      description: '1 queen + 2 bedrooms • 2 bathrooms • WiFi • Kitchen • theatre', 
-      price: 200, 
-      rating: 4.9, 
-      reviews: 51,
-      liked: false,
-      selected: false
-    }
   ]);
 
-  const toggleLiked = (id: number) => {
-    setAccommodations(accommodations.map(accommodation => 
-      accommodation.id === id ? { ...accommodation, liked: !accommodation.liked } : accommodation
-    ));
+  const isHousingSelected = (id: number) => {
+    return selectedHousing.some(h => h.id === id);
   };
 
-  const toggleSelected = (id: number) => {
-    setAccommodations(accommodations.map(accommodation => 
-      accommodation.id === id ? { ...accommodation, selected: !accommodation.selected } : accommodation
-    ));
+  const toggleHousingSelection = (housing: Housing) => {
+    if (isHousingSelected(housing.id)) {
+      removeHousing(housing.id);
+    } else {
+      addHousing(housing);
+    }
   };
 
   const handleContinue = () => {
-    if (accommodations.some(accommodation => accommodation.selected)) {
-      navigate('/checkout');
+    if (selectedHousing.length === 0) {
+      toast.error("Please select at least one housing option!");
+      return;
     }
+    navigate('/checkout');
   };
 
   return (
-    <PhoneFrame title="Next choose housing!" showBackButton>
-      <div className="p-4 flex flex-col h-full">
-        <div className="flex-1">
-          <div className="space-y-4 list-fade-in">
-            {accommodations.map((accommodation) => (
+    <PhoneFrame title="Select Housing Options" showBackButton>
+      <div className="p-4 h-full flex flex-col">
+        <div className="flex-1 space-y-4">
+          {housingOptions.map((housing) => {
+            const selected = isHousingSelected(housing.id);
+            return (
               <div 
-                key={accommodation.id} 
-                className="accommodation-card border border-gray-200 rounded-lg overflow-hidden shadow-sm relative"
+                key={housing.id} 
+                className={`border border-gray-200 rounded-lg p-3 ${
+                  selected ? 'bg-gray-50' : ''
+                }`}
               >
-                <div className="grid grid-cols-7 gap-2">
-                  <div className="col-span-3 bg-gray-100 aspect-square flex items-center justify-center text-gray-400 text-sm">
-                    <div className="text-xs text-center">Image</div>
-                  </div>
-                  <div className="col-span-4 p-2 pr-7">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="text-[10px] text-gray-500 mb-1">
-                          Click/tap subtitle to go
-                        </div>
-                        <div className="font-semibold text-sm">
-                          {accommodation.type}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => toggleLiked(accommodation.id)}
-                        className="like-button absolute top-2 right-2"
-                        aria-label={accommodation.liked ? "Unlike" : "Like"}
-                      >
-                        <Heart 
-                          size={16} 
-                          className={`${accommodation.liked ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
-                        />
-                      </button>
-                    </div>
-                    <div className="text-[10px] text-gray-600 mt-1">
-                      {accommodation.description}
-                    </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="text-xs font-semibold">★ {accommodation.rating}</div>
-                        <div className="text-[10px] text-gray-500 ml-1">({accommodation.reviews} reviews)</div>
-                      </div>
-                      <div className="text-sm font-semibold">${accommodation.price} <span className="text-[10px] text-gray-500">/</span></div>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t border-gray-200 p-2 flex justify-end">
-                  <input
-                    type="checkbox"
-                    checked={accommodation.selected}
-                    onChange={() => toggleSelected(accommodation.id)}
-                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/25"
-                  />
+                <div className="font-medium text-sm mb-2">{housing.title}</div>
+                <ul className="text-xs text-gray-600 space-y-1 mb-3">
+                  {housing.bulletPoints.map((point, i) => (
+                    <li key={i} className="flex items-start">
+                      <span className="mr-1">•</span> {point}
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold">${housing.price}/night</div>
+                  <Button
+                    onClick={() => toggleHousingSelection(housing)}
+                    variant={selected ? "outline" : "default"}
+                    className={`text-xs ${
+                      selected ? 'border-green-500 text-green-600' : ''
+                    }`}
+                    size="sm"
+                  >
+                    {selected ? (
+                      <>Added <Check size={14} className="ml-1" /></>
+                    ) : (
+                      <>Add to Trip <Plus size={14} className="ml-1" /></>
+                    )}
+                  </Button>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
         
         <div className="mt-4">
-          <button
+          <Button
             onClick={handleContinue}
-            className="w-full p-2 bg-black text-white rounded-lg flex items-center justify-center text-sm font-medium transition-transform active:scale-[0.98] disabled:opacity-70"
-            disabled={!accommodations.some(accommodation => accommodation.selected)}
+            className="w-full p-2 bg-black text-white rounded-lg flex items-center justify-center text-sm font-medium transition-all"
+            disabled={selectedHousing.length === 0}
           >
-            Continue to Checkout
+            Next Step
             <ArrowRight size={16} className="ml-2" />
-          </button>
+          </Button>
         </div>
       </div>
     </PhoneFrame>

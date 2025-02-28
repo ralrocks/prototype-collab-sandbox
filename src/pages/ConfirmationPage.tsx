@@ -1,14 +1,18 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PhoneFrame from '@/components/PhoneFrame';
 import { Check } from 'lucide-react';
+import PhoneFrame from '@/components/PhoneFrame';
+import { Button } from '@/components/ui/button';
+import { useBookingStore } from '@/stores/bookingStore';
 
 const ConfirmationPage = () => {
   const navigate = useNavigate();
-
+  const { selectedFlight, selectedHousing, calculateTotal, resetBooking } = useBookingStore();
+  
+  // Confetti effect on page load
   useEffect(() => {
-    const confetti = () => {
+    const createConfetti = () => {
       const canvas = document.createElement('canvas');
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -65,8 +69,13 @@ const ConfirmationPage = () => {
       }, 5000);
     };
 
-    confetti();
+    createConfetti();
   }, []);
+
+  const handleNewBooking = () => {
+    resetBooking();
+    navigate('/');
+  };
 
   return (
     <PhoneFrame>
@@ -75,47 +84,47 @@ const ConfirmationPage = () => {
           <Check size={32} className="text-green-600" />
         </div>
         
-        <h1 className="text-2xl font-bold mb-2 animate-slide-up">Booking Confirmed!</h1>
+        <h1 className="text-2xl font-bold mb-2 animate-slide-up">Booking Complete!</h1>
         <p className="text-gray-600 mb-6 animate-slide-up animation-delay-100">
-          Your trip to Boston has been successfully booked.
+          Your trip has been successfully booked.
         </p>
         
         <div className="w-full max-w-sm bg-gray-50 rounded-lg p-4 mb-6 animate-slide-up animation-delay-200">
           <div className="text-sm font-medium mb-2">Trip Summary</div>
           <div className="text-xs text-gray-600 space-y-2">
+            {selectedFlight && (
+              <div className="flex justify-between">
+                <span>Flight:</span>
+                <span>{selectedFlight.attribute}</span>
+              </div>
+            )}
+            
             <div className="flex justify-between">
-              <span>Flight:</span>
-              <span>Delta Airlines</span>
+              <span>Housing:</span>
+              <span>{selectedHousing.length} options selected</span>
             </div>
-            <div className="flex justify-between">
-              <span>Dates:</span>
-              <span>Jun 15 - Jun 18, 2023</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Accommodation:</span>
-              <span>Downtown Apartment</span>
-            </div>
+            
+            {selectedHousing.map((housing, index) => (
+              <div key={index} className="flex justify-between pl-4 text-[10px]">
+                <span>{housing.title}</span>
+                <span>${housing.price}</span>
+              </div>
+            ))}
+            
             <div className="flex justify-between font-medium pt-2 border-t">
               <span>Total:</span>
-              <span>$925.95</span>
+              <span>${calculateTotal()}</span>
             </div>
           </div>
         </div>
         
         <div className="space-y-3 w-full animate-slide-up animation-delay-300">
-          <button 
-            onClick={() => navigate('/itinerary')}
+          <Button 
+            onClick={handleNewBooking}
             className="w-full p-3 bg-black text-white rounded-lg text-sm font-medium transition-transform active:scale-[0.98]"
           >
-            View Itinerary
-          </button>
-          
-          <button 
-            onClick={() => navigate('/')}
-            className="w-full p-3 border border-gray-300 rounded-lg text-sm font-medium transition-transform active:scale-[0.98]"
-          >
             Book Another Trip
-          </button>
+          </Button>
         </div>
       </div>
     </PhoneFrame>
