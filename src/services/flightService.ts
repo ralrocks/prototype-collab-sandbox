@@ -36,13 +36,6 @@ export const fetchFlights = async (
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
   
   try {
-    // Check if we have a valid API key
-    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
-    if (!apiKey) {
-      console.log('No Perplexity API key found, using fallback data');
-      throw new Error('Perplexity API key not found. Please add your API key in settings.');
-    }
-    
     // Format dates for better readability
     const formattedDepartureDate = formatDateForDisplay(departureDate);
     const formattedReturnDate = returnDate ? formatDateForDisplay(returnDate) : undefined;
@@ -97,8 +90,8 @@ export const fetchFlights = async (
     }));
   } catch (error) {
     console.error('Error fetching flight data:', error);
-    // Re-throw the error for proper error handling
-    throw error;
+    // Return fallback flights instead of throwing error
+    return generateFallbackFlights(from, to, departureDate);
   }
 };
 

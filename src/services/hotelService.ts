@@ -19,13 +19,6 @@ export const fetchHotels = async (
   console.log(`Fetching hotels in ${city} from ${checkIn} to ${checkOut} with filters:`, filters);
   
   try {
-    // Check if API key exists
-    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
-    if (!apiKey) {
-      console.log('No Perplexity API key found, using fallback data');
-      return fallbackHotels(city, filters);
-    }
-    
     // Build filter description for the prompt
     let filterDescription = '';
     if (filters.minPrice || filters.maxPrice) {

@@ -11,7 +11,6 @@ import { Flight } from '@/types';
 import { AuthGuard } from '@/components/AuthGuard';
 
 // New components
-import ApiKeyMissingAlert from '@/components/flights/ApiKeyMissingAlert';
 import FlightsLoading from '@/components/flights/FlightsLoading';
 import FlightsError from '@/components/flights/FlightsError';
 import FlightHeader from '@/components/flights/FlightHeader';
@@ -35,7 +34,6 @@ const FlightsPage = () => {
   const [sortBy, setSortBy] = useState<'price' | 'time'>('price');
   const [activeTab, setActiveTab] = useState<'outbound' | 'return'>('outbound');
   const [fetchAttempted, setFetchAttempted] = useState(false);
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
   // Location and date details
   const from = localStorage.getItem('fromLocation') || 'LAX';
@@ -59,14 +57,6 @@ const FlightsPage = () => {
     : undefined;
 
   useEffect(() => {
-    // Check if API key exists
-    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
-    if (!apiKey) {
-      setApiKeyMissing(true);
-      setLoading(false);
-      return;
-    }
-    
     if (!fetchAttempted) {
       getFlights();
       setFetchAttempted(true);
@@ -102,12 +92,8 @@ const FlightsPage = () => {
       }
     } catch (err: any) {
       console.error('Error fetching flights:', err);
-      if (err.message?.includes('API key not found')) {
-        setApiKeyMissing(true);
-      } else {
-        setError('Failed to load flight data. Please try again.');
-        toast.error('Failed to load flights');
-      }
+      setError('Failed to load flight data. Please try again.');
+      toast.error('Failed to load flights');
     } finally {
       setLoading(false);
     }
@@ -160,14 +146,6 @@ const FlightsPage = () => {
   const sortedReturnFlights = sortFlights(returnFlights);
 
   // Render functions for different states
-  if (apiKeyMissing) {
-    return (
-      <WebLayout title="API Key Required" showBackButton>
-        <ApiKeyMissingAlert />
-      </WebLayout>
-    );
-  }
-
   if (loading) {
     return (
       <WebLayout title="Loading Flights..." showBackButton>
