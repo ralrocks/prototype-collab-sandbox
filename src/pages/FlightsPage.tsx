@@ -2,23 +2,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, ArrowRight, Loader2, Calendar, Clock, Plane, Info, RotateCcw, ArrowLeftRight, RefreshCw, KeyRound } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
 import { fetchFlights } from '@/services/travelApi';
 import { Flight } from '@/types';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AuthGuard } from '@/components/AuthGuard';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+// New components
+import ApiKeyMissingAlert from '@/components/flights/ApiKeyMissingAlert';
+import FlightsLoading from '@/components/flights/FlightsLoading';
+import FlightsError from '@/components/flights/FlightsError';
+import FlightHeader from '@/components/flights/FlightHeader';
+import FlightTabs from '@/components/flights/FlightTabs';
+import FlightList from '@/components/flights/FlightList';
 
 const FlightsPage = () => {
   const navigate = useNavigate();
@@ -38,6 +36,27 @@ const FlightsPage = () => {
   const [activeTab, setActiveTab] = useState<'outbound' | 'return'>('outbound');
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
+
+  // Location and date details
+  const from = localStorage.getItem('fromLocation') || 'LAX';
+  const to = localStorage.getItem('toLocation') || 'JFK';
+  const fromName = localStorage.getItem('fromLocationName') || 'Los Angeles';
+  const toName = localStorage.getItem('toLocationName') || 'New York';
+  const departureDate = localStorage.getItem('departureDate') 
+    ? new Date(localStorage.getItem('departureDate')!).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }) 
+    : 'Selected date';
+  
+  const returnDate = localStorage.getItem('returnDate') 
+    ? new Date(localStorage.getItem('returnDate')!).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }) 
+    : undefined;
 
   useEffect(() => {
     // Check if API key exists
@@ -140,43 +159,11 @@ const FlightsPage = () => {
   const sortedOutboundFlights = sortFlights(outboundFlights);
   const sortedReturnFlights = sortFlights(returnFlights);
 
+  // Render functions for different states
   if (apiKeyMissing) {
     return (
       <WebLayout title="API Key Required" showBackButton>
-        <div className="max-w-3xl mx-auto py-8">
-          <Alert className="mb-6 bg-amber-50 border-amber-200">
-            <KeyRound className="h-5 w-5 text-amber-600" />
-            <AlertTitle className="text-amber-800">Perplexity API Key Required</AlertTitle>
-            <AlertDescription className="text-amber-700">
-              You need to add your Perplexity API key to use real-time flight search.
-            </AlertDescription>
-          </Alert>
-          
-          <div className="space-y-4 text-center">
-            <p className="text-gray-700">
-              To search for real flights, you need to add your Perplexity API key in the settings.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button onClick={() => navigate('/settings')} className="bg-blue-600 hover:bg-blue-700">
-                Go to Settings
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/')}>
-                Back to Search
-              </Button>
-            </div>
-            <p className="text-sm text-gray-500 mt-4">
-              Don't have a Perplexity API key?{" "}
-              <a 
-                href="https://docs.perplexity.ai/docs/getting-started" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                Get one here
-              </a>
-            </p>
-          </div>
-        </div>
+        <ApiKeyMissingAlert />
       </WebLayout>
     );
   }
@@ -184,12 +171,7 @@ const FlightsPage = () => {
   if (loading) {
     return (
       <WebLayout title="Loading Flights..." showBackButton>
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 size={48} className="animate-spin text-primary mb-4" />
-          <p className="text-center text-gray-600">
-            Searching for the best flight deals...
-          </p>
-        </div>
+        <FlightsLoading />
       </WebLayout>
     );
   }
@@ -197,134 +179,53 @@ const FlightsPage = () => {
   if (error) {
     return (
       <WebLayout title="Error" showBackButton>
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <div className="text-center">
-            <p className="text-red-500 mb-4">{error}</p>
-            <Button onClick={() => {
-              setFetchAttempted(false);
-            }}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Try Again
-            </Button>
-          </div>
-        </div>
+        <FlightsError 
+          error={error} 
+          onRetry={() => setFetchAttempted(false)} 
+        />
       </WebLayout>
     );
   }
-
-  const from = localStorage.getItem('fromLocation') || 'LAX';
-  const to = localStorage.getItem('toLocation') || 'JFK';
-  const fromName = localStorage.getItem('fromLocationName') || 'Los Angeles';
-  const toName = localStorage.getItem('toLocationName') || 'New York';
-  const departureDate = localStorage.getItem('departureDate') 
-    ? new Date(localStorage.getItem('departureDate')!).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }) 
-    : 'Selected date';
-  
-  const returnDate = localStorage.getItem('returnDate') 
-    ? new Date(localStorage.getItem('returnDate')!).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }) 
-    : undefined;
-
-  const formatDuration = (duration: string) => {
-    // Simple PT5H30M format parser
-    const hours = duration.match(/(\d+)H/)?.[1] || '0';
-    const minutes = duration.match(/(\d+)M/)?.[1] || '0';
-    return `${hours}h ${minutes}m`;
-  };
 
   return (
     <AuthGuard>
       <WebLayout title={`Flights: ${fromName} to ${toName}`} showBackButton>
         <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-semibold mb-1">Select Your {isRoundTrip ? 'Flights' : 'Flight'}</h2>
-                {isRoundTrip ? (
-                  <div className="flex items-center text-gray-600 mb-2">
-                    <Badge variant="outline" className="mr-2 bg-blue-50">Round Trip</Badge>
-                    <ArrowLeftRight className="h-4 w-4 mr-2" />
-                    {fromName} ({from}) ↔ {toName} ({to})
-                  </div>
-                ) : (
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-gray-600 flex items-center">
-                      <Calendar className="mr-2" size={16} />
-                      Departing {departureDate}
-                    </p>
-                    <p className="text-gray-600 text-sm">
-                      {fromName} ({from}) to {toName} ({to})
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center space-x-4">
-                <Button 
-                  variant={sortBy === 'price' ? 'default' : 'outline'} 
-                  size="sm"
-                  onClick={() => setSortBy('price')}
-                >
-                  Sort by Price
-                </Button>
-                <Button 
-                  variant={sortBy === 'time' ? 'default' : 'outline'} 
-                  size="sm"
-                  onClick={() => setSortBy('time')}
-                >
-                  Sort by Time
-                </Button>
-              </div>
-            </div>
-          </div>
+          <FlightHeader 
+            isRoundTrip={isRoundTrip}
+            fromName={fromName}
+            toName={toName}
+            from={from}
+            to={to}
+            departureDate={departureDate}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+          />
           
           {isRoundTrip ? (
-            <Tabs 
-              defaultValue="outbound" 
-              value={activeTab} 
-              onValueChange={(value) => setActiveTab(value as 'outbound' | 'return')}
-              className="mb-8"
-            >
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="outbound" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
-                  <Plane className="mr-2 h-4 w-4" />
-                  Outbound Flight
-                  {selectedOutboundFlight && <Check className="ml-2 h-4 w-4 text-green-500" />}
-                </TabsTrigger>
-                <TabsTrigger value="return" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Return Flight
-                  {selectedReturnFlight && <Check className="ml-2 h-4 w-4 text-green-500" />}
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="outbound" className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-md mb-4 flex items-center text-blue-700">
-                  <Calendar className="mr-2 h-5 w-5" />
-                  <span>Outbound: <strong>{departureDate}</strong> - {fromName} to {toName}</span>
-                </div>
-                
-                {renderFlightList(sortedOutboundFlights, 'outbound')}
-              </TabsContent>
-              
-              <TabsContent value="return" className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-md mb-4 flex items-center text-blue-700">
-                  <Calendar className="mr-2 h-5 w-5" />
-                  <span>Return: <strong>{returnDate}</strong> - {toName} to {fromName}</span>
-                </div>
-                
-                {renderFlightList(sortedReturnFlights, 'return')}
-              </TabsContent>
-            </Tabs>
+            <FlightTabs 
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              outboundFlights={sortedOutboundFlights}
+              returnFlights={sortedReturnFlights}
+              selectedOutboundFlight={selectedOutboundFlight}
+              selectedReturnFlight={selectedReturnFlight}
+              handleFlightSelect={handleFlightSelect}
+              departureDate={departureDate}
+              returnDate={returnDate}
+              fromName={fromName}
+              toName={toName}
+            />
           ) : (
             <div className="mb-8">
-              {renderFlightList(sortedOutboundFlights, 'outbound')}
+              <FlightList 
+                flights={sortedOutboundFlights}
+                direction="outbound"
+                selectedFlight={selectedOutboundFlight}
+                onSelectFlight={handleFlightSelect}
+                fromName={fromName}
+                toName={toName}
+              />
             </div>
           )}
           
@@ -342,118 +243,6 @@ const FlightsPage = () => {
       </WebLayout>
     </AuthGuard>
   );
-  
-  function renderFlightList(flights: Flight[], direction: 'outbound' | 'return') {
-    const selectedFlight = direction === 'outbound' ? selectedOutboundFlight : selectedReturnFlight;
-    
-    if (flights.length === 0) {
-      return (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <p className="text-gray-500 mb-4">No flights available for this route. Try another search.</p>
-            <Button onClick={() => navigate('/')}>
-              Back to Search
-            </Button>
-          </CardContent>
-        </Card>
-      );
-    }
-    
-    return (
-      <div className="space-y-4">
-        {flights.map((flight) => (
-          <Card 
-            key={flight.id} 
-            className={`hover:shadow-lg transition-all cursor-pointer border-2 ${
-              selectedFlight?.id === flight.id ? 'border-green-500' : 'border-transparent'
-            }`}
-            onClick={() => handleFlightSelect(flight, direction)}
-          >
-            <CardContent className="p-0">
-              <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
-                    <Plane className="text-blue-600" size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-medium">{flight.attribute}</h3>
-                    <p className="text-sm text-gray-500">
-                      {flight.details?.flightNumber}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="text-center">
-                  <div className="flex items-center justify-center space-x-2">
-                    <span className="font-medium">{direction === 'outbound' ? fromName : toName}</span>
-                    <div className="w-12 h-px bg-gray-300 relative">
-                      <div className="absolute w-2 h-2 bg-gray-300 rounded-full -top-[3px] -right-1"></div>
-                    </div>
-                    <span className="font-medium">{direction === 'outbound' ? toName : fromName}</span>
-                  </div>
-                  <div className="flex items-center justify-center mt-1 text-sm text-gray-500">
-                    <Clock size={14} className="mr-1" />
-                    {flight.details ? formatDuration(flight.details.duration) : "5h 30m"}
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-lg font-bold">${flight.price}</span>
-                    <p className="text-xs text-gray-500">per person</p>
-                  </div>
-                  <div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant={selectedFlight?.id === flight.id ? "default" : "outline"}
-                            className={selectedFlight?.id === flight.id ? "bg-green-500 hover:bg-green-600" : ""}
-                          >
-                            {selectedFlight?.id === flight.id ? (
-                              <>
-                                <Check size={16} className="mr-1" />
-                                Selected
-                              </>
-                            ) : (
-                              "Select"
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {selectedFlight?.id === flight.id 
-                            ? "This flight is selected" 
-                            : "Click to select this flight"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
-              </div>
-              
-              {flight.details && (
-                <div className="border-t px-4 md:px-6 py-3 bg-gray-50 flex flex-wrap gap-3">
-                  <Badge variant="outline" className="bg-white">
-                    <Clock size={14} className="mr-1" /> {new Date(flight.details.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                  </Badge>
-                  <Badge variant="outline" className="bg-white">
-                    {flight.details.cabin}
-                  </Badge>
-                  <Badge variant="outline" className="bg-white">
-                    {flight.details.stops === 0 ? 'Nonstop' : `${flight.details.stops} stop${flight.details.stops > 1 ? 's' : ''}`}
-                  </Badge>
-                  <Badge variant="outline" className="bg-white">
-                    <Info size={14} className="mr-1" /> Includes 1 carry-on bag
-                  </Badge>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
 };
 
 export default FlightsPage;
