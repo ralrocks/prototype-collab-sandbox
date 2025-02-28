@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { AuthGuard } from '@/components/AuthGuard';
-import { PerplexityApiKeyForm } from '@/components/PerplexityApiKeyForm';
+import PerplexityApiKeyForm from '@/components/PerplexityApiKeyForm';
 import { Switch } from '@/components/ui/switch';
 
 const SettingsPage = () => {
@@ -130,7 +130,7 @@ const SettingsPage = () => {
                         <Label htmlFor="api-mode">Use centralized API key (for all users)</Label>
                       </div>
                       
-                      <PerplexityApiKeyForm adminMode={useCentralizedKey} />
+                      <PerplexityApiKeyForm isAdminMode={useCentralizedKey} />
                     </div>
                   </div>
                 </CardContent>
