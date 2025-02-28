@@ -26,9 +26,9 @@ export const makePerplexityRequest = async (
   try {
     console.log(`Making Perplexity API request with model: ${model}`);
     
-    // Abort controller for timeout - increased to 10 seconds
+    // Reduce timeout to 4 seconds for faster response/failure
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
     
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -79,7 +79,7 @@ export const makePerplexityRequest = async (
   } catch (error) {
     if (error.name === 'AbortError') {
       console.error('Perplexity request aborted due to timeout');
-      throw new Error('Request timed out');
+      throw new Error('Request timed out after 4 seconds');
     }
     console.error('Error making Perplexity request:', error);
     throw error;
@@ -96,11 +96,18 @@ export const extractJsonFromResponse = (text: string): any => {
   } catch (error) {
     // If not valid JSON, try to extract JSON portion using regex
     try {
-      const jsonMatch = text.match(/\[\s*\{.*\}\s*\]/s) || 
-                        text.match(/\{\s*".*"\s*:.*\}/s);
+      // Improved regex to better detect JSON arrays and objects
+      const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/s) || 
+                        text.match(/\{\s*"[\s\S]*"\s*:[\s\S]*\}/s);
       
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
+      }
+      
+      // Try finding JSON within code blocks (```json ... ```)
+      const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch && codeBlockMatch[1]) {
+        return JSON.parse(codeBlockMatch[1]);
       }
     } catch (extractError) {
       console.error('Error extracting JSON from response:', extractError);
