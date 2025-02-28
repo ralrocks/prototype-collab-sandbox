@@ -3,10 +3,6 @@
  * Utility functions for making API requests to Perplexity
  */
 import { toast } from 'sonner';
-import { useApiKey } from '@/contexts/ApiKeyContext';
-
-// Use a hardcoded default API key as a fallback
-const DEFAULT_API_KEY = 'pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
 /**
  * Make a request to the Perplexity API
@@ -14,14 +10,11 @@ const DEFAULT_API_KEY = 'pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 export const makePerplexityRequest = async (
   systemPrompt: string, 
   userPrompt: string,
+  apiKey: string | null,
   temperature: number = 0.2,
   maxTokens: number = 2000,
   model: string = 'llama-3.1-sonar-small-128k-online'
 ): Promise<string> => {
-  // Since we can't use the hook here, we'll use the default key
-  // In a real app, this would need to be redesigned to properly access the key
-  const apiKey = DEFAULT_API_KEY;
-  
   if (!apiKey) {
     console.error('Perplexity API key not found');
     toast.error('API key not configured. Please add it in settings.');
@@ -67,6 +60,8 @@ export const makePerplexityRequest = async (
     }
     
     const data = await response.json();
+    console.log('Perplexity API response received:', data);
+    
     if (data.choices && data.choices.length > 0) {
       return data.choices[0].message.content;
     } else {

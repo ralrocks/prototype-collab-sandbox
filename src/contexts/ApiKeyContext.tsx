@@ -15,19 +15,19 @@ const ApiKeyContext = createContext<ApiKeyContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'PERPLEXITY_API_KEY';
 
-// Hardcoded API key that will be used for all users
+// Default API key for development purposes
 const DEFAULT_API_KEY = 'pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
 export function ApiKeyProvider({ children }: { children: ReactNode }) {
-  const [perplexityApiKey, setPerplexityApiKeyState] = useState<string | null>(DEFAULT_API_KEY);
+  const [perplexityApiKey, setPerplexityApiKeyState] = useState<string | null>(null);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   
-  // Ensure the default API key is always set on mount
+  // Initialize API key on mount
   useEffect(() => {
     try {
-      // Always use the default API key
+      // Use default key for development/demo
       setPerplexityApiKeyState(DEFAULT_API_KEY);
-      console.log('Using default Perplexity API key for all users');
+      console.log('Using default Perplexity API key');
       setApiKeyError(null);
     } catch (error) {
       console.error('Error setting up API key:', error);
@@ -44,7 +44,7 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
     return /^(pk-|pplx-)[A-Za-z0-9]{24,}$/.test(key.trim());
   };
   
-  // Store API key in state - for future flexibility
+  // Store API key in state and localStorage
   const storePerplexityApiKey = (key: string): boolean => {
     try {
       // Always allow the default key
