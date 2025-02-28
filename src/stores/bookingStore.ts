@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { Flight } from '@/types';
+import { Flight, Hotel } from '@/types';
 
 interface Housing {
   id: number;
@@ -15,6 +15,7 @@ interface BookingState {
   setSelectedFlight: (flight: Flight) => void;
   addHousing: (housing: Housing) => void;
   removeHousing: (housingId: number) => void;
+  setSelectedHousing: (housing: Housing[]) => void;
   calculateTotal: () => number;
   resetBooking: () => void;
 }
@@ -32,6 +33,8 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   removeHousing: (housingId) => set((state) => ({
     selectedHousing: state.selectedHousing.filter(item => item.id !== housingId)
   })),
+  
+  setSelectedHousing: (housing) => set({ selectedHousing: housing }),
   
   calculateTotal: () => {
     const state = get();
