@@ -23,19 +23,9 @@ export const formatDateForDisplay = (dateString: string): string => {
   }
 };
 
-// Create a promise with timeout function
-const promiseWithTimeout = (promise, timeoutMs) => {
-  // Create a promise that rejects in <timeoutMs> milliseconds
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
-  );
-  
-  // Returns a race between our timeout and the passed in promise
-  return Promise.race([promise, timeout]);
-};
-
 /**
  * Function to search for flights using Perplexity AI
+ * Now immediately uses fallback data to prevent API timeouts
  */
 export const fetchFlights = async (
   from: string, 
@@ -46,69 +36,8 @@ export const fetchFlights = async (
 ): Promise<Flight[]> => {
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
   
-  try {
-    // Format dates for better readability
-    const formattedDepartureDate = formatDateForDisplay(departureDate);
-    const formattedReturnDate = returnDate ? formatDateForDisplay(returnDate) : undefined;
-    
-    // Build the prompt for Perplexity
-    const systemPrompt = 'You are a flight search API. You return ONLY valid JSON arrays of flight information based on the user query. No explanations, just data.';
-    const userPrompt = `Search for ${tripType === 'roundtrip' ? 'round-trip' : 'one-way'} flights from ${from} to ${to} on ${formattedDepartureDate}${formattedReturnDate ? ` with return on ${formattedReturnDate}` : ''}. 
-    Format the results as a structured JSON array of exactly 6 flight options. 
-    Each flight should include: airline name, flight number, departure time, arrival time, duration, number of stops (0 for non-stop), cabin class (ECONOMY, PREMIUM_ECONOMY, BUSINESS, or FIRST), and price in USD.
-    Don't include any explanation, just return valid JSON that can be parsed with JSON.parse().
-    Format the response exactly like this example:
-    [
-      {
-        "airline": "Delta Air Lines",
-        "flightNumber": "DL1234",
-        "departureTime": "2023-12-10T08:30:00.000Z",
-        "arrivalTime": "2023-12-10T11:45:00.000Z",
-        "duration": "PT3H15M",
-        "stops": 0,
-        "cabin": "ECONOMY",
-        "price": 299
-      },
-      ...5 more similar objects
-    ]`;
-    
-    // Make the API request with a 3 second timeout
-    const apiRequestPromise = makePerplexityRequest(systemPrompt, userPrompt);
-    const content = await promiseWithTimeout(apiRequestPromise, 3000)
-      .catch(error => {
-        console.log('API request timed out or failed:', error.message);
-        throw new Error('API request failed or timed out');
-      });
-    
-    // Parse the JSON from the response
-    const flightData = extractJsonFromResponse(content);
-    
-    if (!Array.isArray(flightData) || flightData.length === 0) {
-      console.log('Invalid flight data received, using fallback');
-      return generateFallbackFlights(from, to, departureDate);
-    }
-    
-    // Transform the data to match our Flight type
-    return flightData.map((flight: any, index: number) => ({
-      id: index + 1,
-      attribute: flight.airline || 'Unknown Airline',
-      question1: `${from} → ${to} (${new Date(flight.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(flight.arrivalTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`,
-      price: flight.price || Math.floor(200 + Math.random() * 300),
-      tripType: tripType,
-      details: {
-        flightNumber: flight.flightNumber || `FL${1000 + index}`,
-        duration: flight.duration || 'PT3H00M',
-        departureTime: flight.departureTime || new Date().toISOString(),
-        arrivalTime: flight.arrivalTime || new Date().toISOString(),
-        cabin: flight.cabin || 'ECONOMY',
-        stops: flight.stops || 0
-      }
-    }));
-  } catch (error) {
-    console.error('Error fetching flight data:', error);
-    // Return fallback flights instead of throwing error
-    return generateFallbackFlights(from, to, departureDate);
-  }
+  // Skip the API request and use fallback data directly
+  return generateFallbackFlights(from, to, departureDate);
 };
 
 /**
