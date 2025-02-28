@@ -33,6 +33,17 @@ const SettingsPage = () => {
     }
   };
   
+  const handleSignOut = async () => {
+    try {
+      console.log('Attempting to sign out...');
+      await signOut();
+      toast.success('Signed out successfully');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast.error('Failed to sign out');
+    }
+  };
+  
   return (
     <AuthGuard>
       <WebLayout title="Settings">
@@ -80,7 +91,7 @@ const SettingsPage = () => {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => signOut()}
+                        onClick={handleSignOut}
                       >
                         Sign Out
                       </Button>

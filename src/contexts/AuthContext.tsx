@@ -61,17 +61,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     fetchUser();
     
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session);
-      setSession(session);
-      setUser(session?.user || null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log('Auth state changed:', event, newSession);
+      setSession(newSession);
+      setUser(newSession?.user || null);
       
-      if (session?.user) {
+      if (newSession?.user) {
         try {
           const { data: profileData, error } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', session.user.id)
+            .eq('id', newSession.user.id)
             .single();
           
           if (error) throw error;
@@ -137,19 +137,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       console.log('Signing out...');
+      
+      // First, make sure to delete any localStorage values we want to clear
+      // localStorage.removeItem('PERPLEXITY_API_KEY'); // Uncomment if you want to clear API key on signout
+      
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Sign out error:', error);
         throw error;
       }
       
+      // Clear state after successful signout
       setSession(null);
       setUser(null);
       setProfile(null);
       
       toast.success('Signed out successfully!');
       
-      // Force reload to clear any cached states
+      // Force a page reload to clear any remaining state
       window.location.href = '/';
     } catch (error: any) {
       console.error('Sign out error caught:', error);

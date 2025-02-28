@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from 'sonner';
 
 interface WebLayoutProps {
   children: React.ReactNode;
@@ -31,10 +32,13 @@ const WebLayout: React.FC<WebLayoutProps> = ({
 
   const handleSignOut = async () => {
     try {
+      console.log('WebLayout: Initiating sign out...');
       await signOut();
+      console.log('WebLayout: Sign out completed');
       navigate('/auth');
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('WebLayout: Sign out error:', error);
+      toast.error('Failed to sign out. Please try again.');
     }
   };
 
