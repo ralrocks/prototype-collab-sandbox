@@ -4,6 +4,9 @@
  */
 import { toast } from 'sonner';
 
+// Default API key that will be used if none is found in localStorage
+const DEFAULT_API_KEY = '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';
+
 /**
  * Make a request to the Perplexity API
  */
@@ -14,14 +17,8 @@ export const makePerplexityRequest = async (
   maxTokens: number = 2000,
   model: string = 'llama-3.1-sonar-small-128k-online'
 ): Promise<string> => {
-  // Fetch API key from localStorage
-  const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
-  
-  if (!apiKey) {
-    console.error('Perplexity API key not found in localStorage');
-    toast.error('API key not found. Please add your API key in settings.');
-    throw new Error('Perplexity API key not found. Please add your API key in settings.');
-  }
+  // Fetch API key from localStorage, or use default
+  const apiKey = localStorage.getItem('PERPLEXITY_API_KEY') || DEFAULT_API_KEY;
   
   try {
     console.log(`Making Perplexity API request with model: ${model}`);
@@ -54,7 +51,7 @@ export const makePerplexityRequest = async (
       console.error('Perplexity API error:', errorData);
       
       if (response.status === 401) {
-        toast.error('Invalid API key. Please update your API key in settings.');
+        console.error('API key authentication failed. Using fallback data.');
         throw new Error('Invalid API key');
       }
       
@@ -109,14 +106,8 @@ export const makeOpenAICompatibleRequest = async (
   maxTokens: number = 2000,
   model: string = 'sonar-small-online'
 ): Promise<string> => {
-  // Fetch API key from localStorage
-  const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
-  
-  if (!apiKey) {
-    console.error('Perplexity API key not found in localStorage');
-    toast.error('API key not found. Please add your API key in settings.');
-    throw new Error('Perplexity API key not found. Please add your API key in settings.');
-  }
+  // Fetch API key from localStorage, or use default
+  const apiKey = localStorage.getItem('PERPLEXITY_API_KEY') || DEFAULT_API_KEY;
   
   try {
     console.log(`Making Perplexity OpenAI compatible request with model: ${model}`);
@@ -149,7 +140,7 @@ export const makeOpenAICompatibleRequest = async (
       console.error('Perplexity API error:', errorData);
       
       if (response.status === 401) {
-        toast.error('Invalid API key. Please update your API key in settings.');
+        console.error('API key authentication failed. Using fallback data.');
         throw new Error('Invalid API key');
       }
       

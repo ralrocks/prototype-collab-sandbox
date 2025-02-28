@@ -15,23 +15,33 @@ const ApiKeyContext = createContext<ApiKeyContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'PERPLEXITY_API_KEY';
 
+// Hardcoded default API key that will be used for all users
+const DEFAULT_API_KEY = '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';
+
 export function ApiKeyProvider({ children }: { children: ReactNode }) {
   const [perplexityApiKey, setPerplexityApiKey] = useState<string | null>(null);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   
-  // Load key from localStorage on mount
+  // Load key from localStorage on mount, use default key if none exists
   useEffect(() => {
     try {
       const savedKey = localStorage.getItem(LOCAL_STORAGE_KEY);
+      
       if (savedKey) {
         setPerplexityApiKey(savedKey);
         console.log('Loaded Perplexity API key from localStorage');
       } else {
-        console.log('No Perplexity API key found in localStorage');
-        setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
+        // If no key in localStorage, use the default key and save it
+        localStorage.setItem(LOCAL_STORAGE_KEY, DEFAULT_API_KEY);
+        setPerplexityApiKey(DEFAULT_API_KEY);
+        console.log('Using default Perplexity API key');
       }
+      
+      setApiKeyError(null);
     } catch (error) {
       console.error('Error loading API key from localStorage:', error);
+      // Still set the default key in case of error
+      setPerplexityApiKey(DEFAULT_API_KEY);
     }
   }, []);
   
@@ -67,17 +77,17 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Remove API key from localStorage and state
+  // Remove API key from localStorage and state and replace with default
   const removePerplexityApiKey = () => {
     try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-      setPerplexityApiKey(null);
-      setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
-      console.log('Perplexity API key removed');
-      toast.info('API key removed');
+      localStorage.setItem(LOCAL_STORAGE_KEY, DEFAULT_API_KEY);
+      setPerplexityApiKey(DEFAULT_API_KEY);
+      setApiKeyError(null);
+      console.log('Reset to default Perplexity API key');
+      toast.info('Reset to default API key');
     } catch (error) {
-      console.error('Error removing API key:', error);
-      toast.error('Failed to remove API key');
+      console.error('Error resetting API key:', error);
+      toast.error('Failed to reset API key');
     }
   };
   
