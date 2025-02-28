@@ -9,7 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const ConfirmationPage = () => {
   const navigate = useNavigate();
-  const { selectedFlight, selectedHousing, calculateTotal, resetBooking } = useBookingStore();
+  const { 
+    selectedOutboundFlight, 
+    selectedReturnFlight,
+    selectedHousing, 
+    calculateTotal, 
+    resetBooking 
+  } = useBookingStore();
   
   // Confetti effect on page load
   useEffect(() => {
@@ -96,13 +102,24 @@ const ConfirmationPage = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {selectedFlight && (
+              {selectedOutboundFlight && (
                 <div>
-                  <h3 className="font-medium mb-2">Flight Details</h3>
+                  <h3 className="font-medium mb-2">Outbound Flight Details</h3>
                   <div className="text-sm text-gray-600">
-                    <p><span className="font-medium">Airline:</span> {selectedFlight.attribute}</p>
-                    <p><span className="font-medium">Route:</span> {selectedFlight.question1}</p>
-                    <p><span className="font-medium">Price:</span> ${selectedFlight.price}</p>
+                    <p><span className="font-medium">Airline:</span> {selectedOutboundFlight.attribute}</p>
+                    <p><span className="font-medium">Route:</span> {selectedOutboundFlight.question1}</p>
+                    <p><span className="font-medium">Price:</span> ${selectedOutboundFlight.price}</p>
+                  </div>
+                </div>
+              )}
+              
+              {selectedReturnFlight && (
+                <div>
+                  <h3 className="font-medium mb-2">Return Flight Details</h3>
+                  <div className="text-sm text-gray-600">
+                    <p><span className="font-medium">Airline:</span> {selectedReturnFlight.attribute}</p>
+                    <p><span className="font-medium">Route:</span> {selectedReturnFlight.question1}</p>
+                    <p><span className="font-medium">Price:</span> ${selectedReturnFlight.price}</p>
                   </div>
                 </div>
               )}

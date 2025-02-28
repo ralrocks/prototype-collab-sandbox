@@ -9,10 +9,16 @@ import { Separator } from '@/components/ui/separator';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { selectedFlight, selectedHousing, calculateTotal } = useBookingStore();
+  const { 
+    selectedOutboundFlight, 
+    selectedReturnFlight, 
+    selectedHousing, 
+    calculateTotal 
+  } = useBookingStore();
   
   const housingTotal = selectedHousing.reduce((sum, item) => sum + item.price, 0);
-  const flightPrice = selectedFlight?.price || 0;
+  const outboundFlightPrice = selectedOutboundFlight?.price || 0;
+  const returnFlightPrice = selectedReturnFlight?.price || 0;
   const additionalFees = 2500; // SAX to Section fee
   const totalPrice = calculateTotal();
 
@@ -31,16 +37,31 @@ const CheckoutPage = () => {
                 <CardTitle>Trip Summary</CardTitle>
               </CardHeader>
               <CardContent>
-                {selectedFlight && (
+                {selectedOutboundFlight && (
                   <div className="mb-6">
-                    <h3 className="font-medium text-lg mb-3">Flight</h3>
+                    <h3 className="font-medium text-lg mb-3">Outbound Flight</h3>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <div className="flex justify-between mb-2">
-                        <span>{selectedFlight.attribute}</span>
-                        <span className="font-medium">${selectedFlight.price}</span>
+                        <span>{selectedOutboundFlight.attribute}</span>
+                        <span className="font-medium">${selectedOutboundFlight.price}</span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        {selectedFlight.question1}
+                        {selectedOutboundFlight.question1}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {selectedReturnFlight && (
+                  <div className="mb-6">
+                    <h3 className="font-medium text-lg mb-3">Return Flight</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between mb-2">
+                        <span>{selectedReturnFlight.attribute}</span>
+                        <span className="font-medium">${selectedReturnFlight.price}</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {selectedReturnFlight.question1}
                       </div>
                     </div>
                   </div>
@@ -75,10 +96,17 @@ const CheckoutPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {selectedFlight && (
+                  {selectedOutboundFlight && (
                     <div className="flex justify-between">
-                      <span>Flight</span>
-                      <span>${flightPrice}</span>
+                      <span>Outbound Flight</span>
+                      <span>${outboundFlightPrice}</span>
+                    </div>
+                  )}
+                  
+                  {selectedReturnFlight && (
+                    <div className="flex justify-between">
+                      <span>Return Flight</span>
+                      <span>${returnFlightPrice}</span>
                     </div>
                   )}
                   

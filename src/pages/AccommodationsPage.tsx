@@ -20,14 +20,14 @@ interface HousingOption {
 
 const AccommodationsPage = () => {
   const navigate = useNavigate();
-  const { selectedFlight, selectedHousing, setSelectedHousing } = useBookingStore();
+  const { selectedOutboundFlight, selectedHousing, setSelectedHousing } = useBookingStore();
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Redirect if no flight is selected
-    if (!selectedFlight) {
+    if (!selectedOutboundFlight) {
       toast.error("Please select a flight first");
       navigate('/flights');
       return;
@@ -70,7 +70,7 @@ const AccommodationsPage = () => {
     };
     
     fetchHotelData();
-  }, [selectedFlight, navigate]);
+  }, [selectedOutboundFlight, navigate]);
 
   // Convert Hotel objects to HousingOption format for compatibility with existing bookingStore
   const convertToHousingOption = (hotel: Hotel): HousingOption => {

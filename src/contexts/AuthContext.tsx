@@ -30,13 +30,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.session?.user || null);
       
       if (data.session?.user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.session.user.id)
-          .single();
-        
-        setProfile(profileData);
+        try {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.session.user.id)
+            .single();
+          
+          if (error) throw error;
+          setProfile(profileData);
+        } catch (error) {
+          console.error('Error fetching profile:', error);
+        }
       }
       
       setLoading(false);
@@ -49,13 +54,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user || null);
       
       if (session?.user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        
-        setProfile(profileData);
+        try {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (error) throw error;
+          setProfile(profileData);
+        } catch (error) {
+          console.error('Error fetching profile:', error);
+          setProfile(null);
+        }
       } else {
         setProfile(null);
       }
@@ -118,9 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       if (!user) throw new Error('No user');
       
-      const updates = {};
-      if (data.fullName) updates['full_name'] = data.fullName;
-      if (data.avatarUrl) updates['avatar_url'] = data.avatarUrl;
+      const updates: Record<string, string> = {};
+      if (data.fullName) updates.full_name = data.fullName;
+      if (data.avatarUrl) updates.avatar_url = data.avatarUrl;
       
       const { error } = await supabase
         .from('profiles')
@@ -132,13 +143,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.success('Profile updated successfully!');
       
       // Refresh profile data
-      const { data: newProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      setProfile(newProfile);
+      try {
+        const { data: newProfile, error: fetchError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        setProfile(newProfile);
+      } catch (err) {
+        console.error('Error refreshing profile:', err);
+        toast.error('Profile updated but could not refresh data');
+      }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred while updating profile');
       throw error;
