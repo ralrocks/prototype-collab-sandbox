@@ -22,7 +22,7 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
   const [perplexityApiKey, setPerplexityApiKeyState] = useState<string | null>(DEFAULT_API_KEY);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   
-  // Load key from localStorage or use default on mount
+  // Ensure the default API key is always set on mount
   useEffect(() => {
     try {
       // Always use the default API key
@@ -93,7 +93,7 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
     perplexityApiKey,
     setPerplexityApiKey: storePerplexityApiKey,
     removePerplexityApiKey,
-    hasPerplexityApiKey: true, // Always true since we have a default key
+    hasPerplexityApiKey: !!perplexityApiKey, // Always true since we have a default key
     isValidPerplexityApiKey,
     apiKeyError,
   };

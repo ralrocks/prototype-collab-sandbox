@@ -17,8 +17,8 @@ export const makePerplexityRequest = async (
   maxTokens: number = 2000,
   model: string = 'llama-3.1-sonar-small-128k-online'
 ): Promise<string> => {
-  // Use the default API key or check localStorage as fallback
-  const apiKey = DEFAULT_API_KEY || localStorage.getItem('PERPLEXITY_API_KEY');
+  // Always use the default API key
+  const apiKey = DEFAULT_API_KEY;
   
   if (!apiKey) {
     console.error('Perplexity API key not found');
@@ -112,8 +112,8 @@ export const makeOpenAICompatibleRequest = async (
   maxTokens: number = 2000,
   model: string = 'sonar-small-online'
 ): Promise<string> => {
-  // Use the default API key or check localStorage as fallback
-  const apiKey = DEFAULT_API_KEY || localStorage.getItem('PERPLEXITY_API_KEY');
+  // Always use the default API key
+  const apiKey = DEFAULT_API_KEY;
   
   if (!apiKey) {
     console.error('Perplexity API key not found');

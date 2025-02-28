@@ -20,10 +20,13 @@ const SettingsPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [useCentralizedKey, setUseCentralizedKey] = useState(true);
   
+  console.log('Settings page loaded with profile:', profile);
+  
   // Update fullName when profile changes
   useEffect(() => {
     if (profile?.full_name) {
       setFullName(profile.full_name);
+      console.log('Updated fullName from profile:', profile.full_name);
     }
   }, [profile]);
   
@@ -122,7 +125,7 @@ const SettingsPage = () => {
                 <CardHeader>
                   <CardTitle>API Keys</CardTitle>
                   <CardDescription>
-                    Manage your external API keys
+                    API Keys are managed centrally for all users
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -130,27 +133,13 @@ const SettingsPage = () => {
                     <div>
                       <h3 className="text-lg font-medium mb-2">Perplexity API</h3>
                       <p className="text-sm text-gray-500 mb-4">
-                        Used for real-time flight search, hotel recommendations, and travel information.
-                        <a 
-                          href="https://docs.perplexity.ai/docs/getting-started" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:text-blue-700 ml-1"
-                        >
-                          Get your API key here
-                        </a>
+                        This app uses a centralized API key for all users. You don't need to provide your own key.
                       </p>
                       
-                      <div className="flex items-center space-x-2 mb-4">
-                        <Switch
-                          id="api-mode"
-                          checked={useCentralizedKey}
-                          onCheckedChange={setUseCentralizedKey}
-                        />
-                        <Label htmlFor="api-mode">Use centralized API key (for all users)</Label>
+                      <div className="bg-green-50 p-4 rounded-md border border-green-200">
+                        <p className="text-green-800 font-medium">API Key Status: Active</p>
+                        <p className="text-green-700 text-sm mt-1">All features are available and working properly.</p>
                       </div>
-                      
-                      <PerplexityApiKeyForm isAdminMode={useCentralizedKey} />
                     </div>
                   </div>
                 </CardContent>

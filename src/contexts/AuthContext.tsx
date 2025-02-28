@@ -31,27 +31,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<ProfileType | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Function to fetch user profile data
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+      
+      console.log('Profile data fetched successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('Exception fetching profile:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        setLoading(true);
         const { data } = await supabase.auth.getSession();
+        console.log('Auth session data:', data);
+        
         setSession(data.session);
         setUser(data.session?.user || null);
         
         if (data.session?.user) {
-          try {
-            const { data: profileData, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', data.session.user.id)
-              .single();
-            
-            if (error) throw error;
-            setProfile(profileData);
-            console.log('Profile loaded:', profileData);
-          } catch (error) {
-            console.error('Error fetching profile:', error);
-          }
+          const profileData = await fetchUserProfile(data.session.user.id);
+          setProfile(profileData);
         }
       } catch (error) {
         console.error('Error in fetchUser:', error);
@@ -68,20 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user || null);
       
       if (newSession?.user) {
-        try {
-          const { data: profileData, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', newSession.user.id)
-            .single();
-          
-          if (error) throw error;
-          setProfile(profileData);
-          console.log('Profile updated on auth change:', profileData);
-        } catch (error) {
-          console.error('Error fetching profile:', error);
-          setProfile(null);
-        }
+        const profileData = await fetchUserProfile(newSession.user.id);
+        setProfile(profileData);
       } else {
         setProfile(null);
       }
@@ -140,9 +142,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       console.log('Signing out...');
       
-      // Don't clear API key on signout
-      // localStorage.removeItem('PERPLEXITY_API_KEY');
-      
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Sign out error:', error);
@@ -184,20 +183,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       toast.success('Profile updated successfully!');
       
-      // Refresh profile data
-      try {
-        const { data: newProfile, error: fetchError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (fetchError) throw fetchError;
-        setProfile(newProfile);
-      } catch (err) {
-        console.error('Error refreshing profile:', err);
-        toast.error('Profile updated but could not refresh data');
-      }
+      // Refresh profile data after update
+      const profileData = await fetchUserProfile(user.id);
+      setProfile(profileData);
     } catch (error: any) {
       toast.error(error.message || 'An error occurred while updating profile');
       throw error;
