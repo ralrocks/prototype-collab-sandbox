@@ -10,11 +10,13 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { AuthGuard } from '@/components/AuthGuard';
 import { PerplexityApiKeyForm } from '@/components/PerplexityApiKeyForm';
+import { Switch } from '@/components/ui/switch';
 
 const SettingsPage = () => {
   const { user, profile, signOut, updateProfile } = useAuth();
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [useCentralizedKey, setUseCentralizedKey] = useState(true);
   
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +120,17 @@ const SettingsPage = () => {
                           Get your API key here
                         </a>
                       </p>
-                      <PerplexityApiKeyForm />
+                      
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Switch
+                          id="api-mode"
+                          checked={useCentralizedKey}
+                          onCheckedChange={setUseCentralizedKey}
+                        />
+                        <Label htmlFor="api-mode">Use centralized API key (for all users)</Label>
+                      </div>
+                      
+                      <PerplexityApiKeyForm adminMode={useCentralizedKey} />
                     </div>
                   </div>
                 </CardContent>
