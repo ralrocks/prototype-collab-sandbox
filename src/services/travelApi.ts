@@ -1,10 +1,10 @@
+
 import { Flight } from '@/types';
 
-// API key for Tequila by Kiwi (free tier)
-const API_KEY = 'YOUR_API_KEY'; // Replace with your actual API key from Kiwi
-const BASE_URL = 'https://api.tequila.kiwi.com';
+// Base API configuration
+const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 
-// Function to search for flights using Tequila by Kiwi API
+// Function to search for flights using Perplexity AI
 export const fetchFlights = async (
   from: string, 
   to: string, 
@@ -15,71 +15,135 @@ export const fetchFlights = async (
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
   
   try {
-    // For now, we'll use a mock implementation that simulates API behavior
-    // In a production app, you'd implement the full API call
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Format dates for better readability
+    const formattedDepartureDate = formatDateForDisplay(departureDate);
+    const formattedReturnDate = returnDate ? formatDateForDisplay(returnDate) : undefined;
     
-    // Format dates
-    const formattedDepartureDate = formatDateForApi(departureDate);
-    const formattedReturnDate = returnDate ? formatDateForApi(returnDate) : undefined;
+    // Build the prompt for Perplexity
+    const prompt = `Search for ${tripType === 'roundtrip' ? 'round-trip' : 'one-way'} flights from ${from} to ${to} on ${formattedDepartureDate}${formattedReturnDate ? ` with return on ${formattedReturnDate}` : ''}. 
+    Format the results as a structured JSON array of exactly 6 flight options. 
+    Each flight should include: airline name, flight number, departure time, arrival time, duration, number of stops (0 for non-stop), cabin class (ECONOMY, PREMIUM_ECONOMY, BUSINESS, or FIRST), and price in USD.
+    Don't include any explanation, just return valid JSON that can be parsed with JSON.parse().
+    Format the response exactly like this example:
+    [
+      {
+        "airline": "Delta Air Lines",
+        "flightNumber": "DL1234",
+        "departureTime": "2023-12-10T08:30:00.000Z",
+        "arrivalTime": "2023-12-10T11:45:00.000Z",
+        "duration": "PT3H15M",
+        "stops": 0,
+        "cabin": "ECONOMY",
+        "price": 299
+      },
+      ...5 more similar objects
+    ]`;
     
-    // Normally, we would make an API call like this:
-    // const response = await fetch(`${BASE_URL}/v2/search?fly_from=${from}&fly_to=${to}&date_from=${formattedDepartureDate}&date_to=${formattedDepartureDate}&return_from=${formattedReturnDate}&return_to=${formattedReturnDate}&flight_type=${tripType}`, {
-    //   headers: {
-    //     'apikey': API_KEY,
-    //     'Content-Type': 'application/json'
-    //   }
-    // });
-    // const data = await response.json();
+    // Retrieve API key from local storage or environment
+    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
     
-    // Instead, we'll use enhanced mock data that's structured more like real API data
-    return generateMockFlights(from, to, formattedDepartureDate, formattedReturnDate, tripType);
+    if (!apiKey) {
+      throw new Error('Perplexity API key not found. Please add your API key in settings.');
+    }
+    
+    const response = await fetch(PERPLEXITY_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a flight search API. You return ONLY valid JSON arrays of flight information based on the user query. No explanations, just data.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 2000,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Perplexity API error:', errorData);
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Extract the content from Perplexity response
+    const content = data.choices[0].message.content;
+    
+    // Parse the JSON string from the response
+    let flightData;
+    try {
+      // Find JSON in the response
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        flightData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('No valid JSON found in response');
+      }
+    } catch (parseError) {
+      console.error('Error parsing JSON from Perplexity:', parseError, content);
+      throw new Error('Failed to parse flight data');
+    }
+    
+    // Transform the data to match our Flight type
+    return flightData.map((flight: any, index: number) => ({
+      id: index + 1,
+      attribute: flight.airline,
+      question1: `${from} → ${to} (${new Date(flight.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(flight.arrivalTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`,
+      price: flight.price,
+      tripType: tripType,
+      details: {
+        flightNumber: flight.flightNumber,
+        duration: flight.duration,
+        departureTime: flight.departureTime,
+        arrivalTime: flight.arrivalTime,
+        cabin: flight.cabin,
+        stops: flight.stops
+      }
+    }));
   } catch (error) {
     console.error('Error fetching flight data:', error);
-    throw new Error('Failed to load flight data. Please try again.');
+    // Return a minimal set of fallback flights if the API fails
+    return generateFallbackFlights(from, to, departureDate);
   }
 };
 
-// Format date for API (YYYY-MM-DD)
-const formatDateForApi = (dateString: string): string => {
+// Format date for display (Month Day, Year)
+const formatDateForDisplay = (dateString: string): string => {
   try {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
       console.log('Invalid date format, using current date + 10 days');
       const fallbackDate = new Date();
       fallbackDate.setDate(fallbackDate.getDate() + 10);
-      return fallbackDate.toISOString().split('T')[0];
+      return fallbackDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     }
-    return date.toISOString().split('T')[0];
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   } catch (error) {
     console.log('Error parsing date:', error);
     const fallbackDate = new Date();
     fallbackDate.setDate(fallbackDate.getDate() + 10);
-    return fallbackDate.toISOString().split('T')[0];
+    return fallbackDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   }
 };
 
-// Enhanced mock data generator (with more realistic info)
-const generateMockFlights = (
+// Generate fallback flights if API fails
+const generateFallbackFlights = (
   from: string, 
   to: string, 
-  departureDate: string, 
-  returnDate?: string,
-  tripType: 'oneway' | 'roundtrip' = 'oneway'
+  departureDate: string,
 ): Flight[] => {
-  // Carrier data for more realistic flights
-  const carriers: Record<string, string> = {
-    'DL': 'Delta Air Lines',
-    'AA': 'American Airlines',
-    'UA': 'United Airlines',
-    'B6': 'JetBlue',
-    'AS': 'Alaska Airlines',
-    'WN': 'Southwest Airlines',
-    'NK': 'Spirit Airlines',
-    'F9': 'Frontier Airlines',
-    'HA': 'Hawaiian Airlines',
-    'G4': 'Allegiant Air',
-  };
+  console.log('Using fallback flights data');
   
   // Parse the departure date safely
   let depDate: Date;
@@ -97,157 +161,270 @@ const generateMockFlights = (
     depDate.setDate(depDate.getDate() + 10);
   }
   
-  // Generate mock flight data
-  const mockFlights: Flight[] = [];
+  // Default airlines
+  const airlines = [
+    'Delta Air Lines',
+    'American Airlines',
+    'United Airlines',
+    'Southwest Airlines',
+    'JetBlue',
+    'Alaska Airlines'
+  ];
   
-  // Generate 6 flight options
-  for (let i = 0; i < 6; i++) {
-    const randomCarrierKeys = Object.keys(carriers);
-    const carrierCode = randomCarrierKeys[Math.floor(Math.random() * randomCarrierKeys.length)];
-    const airlineName = carriers[carrierCode] || "Unknown Airline";
+  // Generate basic fallback flights
+  const fallbackFlights: Flight[] = [];
+  
+  for (let i = 0; i < 3; i++) {
+    const airline = airlines[i % airlines.length];
+    const price = 200 + Math.floor(Math.random() * 300);
     
-    // Base price with some randomness
-    const price = 150 + Math.floor(Math.random() * 400);
-    
-    // Create departure and arrival times
     const departureTime = new Date(depDate);
-    departureTime.setHours(8 + i); // Different hours for different flights
-    departureTime.setMinutes(Math.floor(Math.random() * 60));
+    departureTime.setHours(8 + i * 3);
     
-    // Arrival is 3-5 hours after departure
     const arrivalTime = new Date(departureTime);
-    arrivalTime.setHours(arrivalTime.getHours() + 3 + Math.floor(Math.random() * 3));
+    arrivalTime.setHours(arrivalTime.getHours() + 3);
     
-    // Duration in ISO8601 format
-    const durationHours = Math.floor((arrivalTime.getTime() - departureTime.getTime()) / (1000 * 60 * 60));
-    const durationMinutes = Math.floor(((arrivalTime.getTime() - departureTime.getTime()) / (1000 * 60)) % 60);
-    const duration = `PT${durationHours}H${durationMinutes}M`;
-    
-    // Flight number
-    const flightNumber = `${carrierCode}${1000 + Math.floor(Math.random() * 9000)}`;
-    
-    // Number of stops (mostly direct flights)
-    const stops = Math.random() > 0.7 ? Math.floor(Math.random() * 2) + 1 : 0;
-    
-    // Cabin types
-    const cabinTypes = ['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST'];
-    const cabin = cabinTypes[Math.floor(Math.random() * 2)]; // Mostly economy or premium economy
-    
-    mockFlights.push({
+    fallbackFlights.push({
       id: i + 1,
-      attribute: airlineName,
+      attribute: airline,
       question1: `${from} → ${to} (${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`,
       price: price,
-      tripType: tripType,
+      tripType: 'oneway',
       details: {
-        flightNumber: flightNumber,
-        duration: duration,
+        flightNumber: `${airline.substring(0, 2).toUpperCase()}${1000 + i}`,
+        duration: 'PT3H00M',
         departureTime: departureTime.toISOString(),
         arrivalTime: arrivalTime.toISOString(),
-        cabin: cabin,
-        stops: stops
+        cabin: 'ECONOMY',
+        stops: 0
       }
     });
   }
   
-  return mockFlights;
+  return fallbackFlights;
 };
 
-// City search function (for autocomplete)
+// City search function using Perplexity
 export const searchCities = async (query: string): Promise<{code: string, name: string}[]> => {
   console.log(`Searching cities matching: ${query}`);
   
   if (!query || query.length < 2) return [];
   
   try {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
+    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
     
-    // In a real implementation, you would call an API like:
-    // const response = await fetch(`${BASE_URL}/locations/query?term=${query}&location_types=city&limit=5`, {
-    //   headers: {
-    //     'apikey': API_KEY,
-    //     'Content-Type': 'application/json'
-    //   }
-    // });
-    // const data = await response.json();
-    // return data.locations.map(loc => ({ code: loc.code, name: loc.name }));
+    if (!apiKey) {
+      throw new Error('Perplexity API key not found');
+    }
     
-    // For demo, return mock cities that match the query
-    return mockCities
-      .filter(city => 
-        city.name.toLowerCase().includes(query.toLowerCase()) || 
-        city.code.toLowerCase().includes(query.toLowerCase())
-      )
-      .slice(0, 5);
+    const prompt = `Search for major cities and their airport codes that match "${query}". 
+    Return results as a JSON array with exactly 5 cities that best match the query.
+    Each result should have 'code' (airport code) and 'name' (city name).
+    Format: [{"code": "JFK", "name": "New York"}, ...]. 
+    Just return the JSON array, no explanations.`;
+    
+    const response = await fetch(PERPLEXITY_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an airport database API. Return only valid JSON arrays of airport/city data.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1000,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    // Parse the JSON from the response
+    try {
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      throw new Error('No valid JSON found in response');
+    } catch (parseError) {
+      console.error('Error parsing city data:', parseError);
+      return fallbackCitySearch(query);
+    }
   } catch (error) {
     console.error('Error searching cities:', error);
-    return [];
+    return fallbackCitySearch(query);
   }
 };
 
-// Mock cities for autocomplete
-const mockCities = [
-  { code: 'JFK', name: 'New York' },
-  { code: 'LAX', name: 'Los Angeles' },
-  { code: 'SFO', name: 'San Francisco' },
-  { code: 'ORD', name: 'Chicago' },
-  { code: 'MIA', name: 'Miami' },
-  { code: 'ATL', name: 'Atlanta' },
-  { code: 'BOS', name: 'Boston' },
-  { code: 'DEN', name: 'Denver' },
-  { code: 'SEA', name: 'Seattle' },
-  { code: 'LAS', name: 'Las Vegas' },
-  { code: 'DFW', name: 'Dallas' },
-  { code: 'PHX', name: 'Phoenix' },
-  { code: 'IAH', name: 'Houston' },
-  { code: 'MSP', name: 'Minneapolis' },
-  { code: 'DTW', name: 'Detroit' },
-  { code: 'PHL', name: 'Philadelphia' },
-  { code: 'CLT', name: 'Charlotte' },
-  { code: 'BWI', name: 'Baltimore' },
-  { code: 'TPA', name: 'Tampa' },
-  { code: 'PDX', name: 'Portland' },
-  { code: 'LHR', name: 'London' },
-  { code: 'CDG', name: 'Paris' },
-  { code: 'FRA', name: 'Frankfurt' },
-  { code: 'AMS', name: 'Amsterdam' },
-  { code: 'MAD', name: 'Madrid' },
-  { code: 'FCO', name: 'Rome' },
-  { code: 'BCN', name: 'Barcelona' },
-  { code: 'MEX', name: 'Mexico City' },
-  { code: 'YYZ', name: 'Toronto' },
-  { code: 'SYD', name: 'Sydney' }
-];
+// Fallback city search with common cities
+const fallbackCitySearch = (query: string): {code: string, name: string}[] => {
+  const cities = [
+    { code: 'JFK', name: 'New York' },
+    { code: 'LAX', name: 'Los Angeles' },
+    { code: 'ORD', name: 'Chicago' },
+    { code: 'MIA', name: 'Miami' },
+    { code: 'SFO', name: 'San Francisco' },
+    { code: 'ATL', name: 'Atlanta' },
+    { code: 'LAS', name: 'Las Vegas' },
+    { code: 'SEA', name: 'Seattle' },
+    { code: 'BOS', name: 'Boston' },
+    { code: 'DFW', name: 'Dallas' },
+    { code: 'DEN', name: 'Denver' },
+    { code: 'LHR', name: 'London' },
+    { code: 'CDG', name: 'Paris' },
+    { code: 'FRA', name: 'Frankfurt' },
+    { code: 'AMS', name: 'Amsterdam' }
+  ];
+  
+  return cities
+    .filter(city => 
+      city.name.toLowerCase().includes(query.toLowerCase()) || 
+      city.code.toLowerCase().includes(query.toLowerCase())
+    )
+    .slice(0, 5);
+};
 
-// Perplexity API integration for travel recommendations (unchanged)
+// Get destination information using Perplexity
 export const getDestinationInfo = async (destination: string): Promise<string> => {
   console.log(`Getting information about ${destination}`);
   
-  // This is a mock implementation
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  const destinations: Record<string, string> = {
-    "New York": "New York City is known for its iconic skyline, Broadway shows, and cultural diversity. Top attractions include Times Square, Central Park, the Statue of Liberty, and the Metropolitan Museum of Art. The best time to visit is spring (April to June) or fall (September to November) for mild weather. Don't miss trying authentic New York pizza, bagels, and exploring the diverse neighborhoods like SoHo, Greenwich Village, and Chinatown.",
-    "Los Angeles": "Los Angeles is famous for Hollywood, beaches, and year-round sunshine. Visitors can explore the Walk of Fame, Universal Studios, Getty Center, and Santa Monica Pier. The weather is pleasant year-round, but spring and fall offer the most comfortable temperatures. The city has excellent Mexican food, fresh seafood, and trendy restaurants. Be prepared for traffic and consider renting a car to get around this sprawling city.",
-    "Miami": "Miami is known for its beautiful beaches, vibrant nightlife, and Latin influences. South Beach, Art Deco Historic District, and Wynwood Walls are must-visit attractions. The best time to visit is between November and April when humidity is lower. The city offers exceptional Cuban cuisine, fresh seafood, and tropical cocktails. Miami is also a gateway to the Florida Keys and Everglades National Park.",
-    "Chicago": "Chicago offers stunning architecture, world-class museums, and food scene featuring deep dish pizza and Chicago-style hot dogs. The city shines in summer with Lake Michigan beaches and outdoor festivals, though spring and fall offer pleasant weather with fewer crowds. Visit Millennium Park, The Art Institute, Willis Tower, and take an architecture river cruise to appreciate the city's famous skyline.",
-    "San Francisco": "San Francisco is known for the Golden Gate Bridge, cable cars, and Victorian houses. The city offers unique experiences like Alcatraz Island, Fisherman's Wharf, and Chinatown. Weather is mild year-round but often foggy in summer. The city is a culinary destination with excellent seafood, sourdough bread, and diverse international cuisine. Be prepared for hills and bring layers as temperatures can fluctuate throughout the day."
-  };
-  
-  return destinations[destination] || 
-    `${destination} is a popular travel destination. You can explore local attractions, try regional cuisine, and experience the unique culture. For specific travel tips and recommendations, consider researching current travel guides or asking locals for suggestions.`;
+  try {
+    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
+    
+    if (!apiKey) {
+      throw new Error('Perplexity API key not found');
+    }
+    
+    const prompt = `Provide a concise travel guide for ${destination}. Include key attractions, best time to visit, and local food recommendations. Keep it under 500 characters.`;
+    
+    const response = await fetch(PERPLEXITY_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a travel guide assistant. Provide concise, helpful travel information.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('Error fetching destination info:', error);
+    return `${destination} is a popular travel destination. You can explore local attractions, try regional cuisine, and experience the unique culture. For specific travel tips and recommendations, consider researching current travel guides or asking locals for suggestions.`;
+  }
 };
 
-// Function to get hotel recommendations (unchanged)
+// Function to get hotel recommendations using Perplexity
 export const fetchHotels = async (city: string, checkIn: string, checkOut: string): Promise<any[]> => {
   console.log(`Fetching hotels in ${city} from ${checkIn} to ${checkOut}`);
   
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Return mock hotel data
-  const hotels = [
+  try {
+    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
+    
+    if (!apiKey) {
+      throw new Error('Perplexity API key not found');
+    }
+    
+    const prompt = `Find 5 hotels in ${city} for a stay from ${checkIn} to ${checkOut}.
+    Return results as a JSON array with each hotel having: id, name, price (per night in USD), rating (out of 5), amenities (array of strings), and location.
+    Also include an image field with a placeholder URL for each.
+    Example format:
+    [
+      {
+        "id": 1,
+        "name": "Grand Plaza Hotel",
+        "price": 199,
+        "rating": 4.5,
+        "amenities": ["Free WiFi", "Pool", "Spa"],
+        "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945",
+        "location": "Downtown Chicago"
+      },
+      ...
+    ]
+    Return only the JSON array, no explanations.`;
+    
+    const response = await fetch(PERPLEXITY_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a hotel booking API. Return only valid JSON arrays of hotel data based on the query.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 1500,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    // Parse the JSON from the response
+    try {
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      throw new Error('No valid JSON found in response');
+    } catch (parseError) {
+      console.error('Error parsing hotel data:', parseError);
+      return fallbackHotels(city);
+    }
+  } catch (error) {
+    console.error('Error fetching hotels:', error);
+    return fallbackHotels(city);
+  }
+};
+
+// Fallback hotels if API fails
+const fallbackHotels = (city: string): any[] => {
+  return [
     {
       id: 1,
       name: "Grand Plaza Hotel",
@@ -274,26 +451,6 @@ export const fetchHotels = async (city: string, checkIn: string, checkOut: strin
       amenities: ["Free WiFi", "Continental Breakfast"],
       image: "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       location: city
-    },
-    {
-      id: 4,
-      name: "Seaside Resort",
-      price: 259,
-      rating: 4.6,
-      amenities: ["Beach Access", "Pool", "Spa", "Restaurant", "Bar"],
-      image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      location: city
-    },
-    {
-      id: 5,
-      name: "City Center Inn",
-      price: 159,
-      rating: 4.2,
-      amenities: ["Free WiFi", "Gym", "Restaurant"],
-      image: "https://images.unsplash.com/photo-1564501049412-61c2a3083791?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      location: city
     }
   ];
-  
-  return hotels;
 };

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, ArrowRight, Loader2, Calendar, Clock, Plane, Info, RotateCcw, ArrowLeftRight, RefreshCw } from 'lucide-react';
+import { Check, ArrowRight, Loader2, Calendar, Clock, Plane, Info, RotateCcw, ArrowLeftRight, RefreshCw, KeyRound } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
@@ -18,6 +18,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AuthGuard } from '@/components/AuthGuard';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const FlightsPage = () => {
   const navigate = useNavigate();
@@ -36,8 +37,17 @@ const FlightsPage = () => {
   const [sortBy, setSortBy] = useState<'price' | 'time'>('price');
   const [activeTab, setActiveTab] = useState<'outbound' | 'return'>('outbound');
   const [fetchAttempted, setFetchAttempted] = useState(false);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
   useEffect(() => {
+    // Check if API key exists
+    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
+    if (!apiKey) {
+      setApiKeyMissing(true);
+      setLoading(false);
+      return;
+    }
+    
     if (!fetchAttempted) {
       getFlights();
       setFetchAttempted(true);
@@ -71,10 +81,14 @@ const FlightsPage = () => {
           setReturnFlights(returnFlightsData);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching flights:', err);
-      setError('Failed to load flight data. Please try again.');
-      toast.error('Failed to load flights');
+      if (err.message?.includes('API key not found')) {
+        setApiKeyMissing(true);
+      } else {
+        setError('Failed to load flight data. Please try again.');
+        toast.error('Failed to load flights');
+      }
     } finally {
       setLoading(false);
     }
@@ -125,6 +139,47 @@ const FlightsPage = () => {
 
   const sortedOutboundFlights = sortFlights(outboundFlights);
   const sortedReturnFlights = sortFlights(returnFlights);
+
+  if (apiKeyMissing) {
+    return (
+      <WebLayout title="API Key Required" showBackButton>
+        <div className="max-w-3xl mx-auto py-8">
+          <Alert className="mb-6 bg-amber-50 border-amber-200">
+            <KeyRound className="h-5 w-5 text-amber-600" />
+            <AlertTitle className="text-amber-800">Perplexity API Key Required</AlertTitle>
+            <AlertDescription className="text-amber-700">
+              You need to add your Perplexity API key to use real-time flight search.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="space-y-4 text-center">
+            <p className="text-gray-700">
+              To search for real flights, you need to add your Perplexity API key in the settings.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button onClick={() => navigate('/settings')} className="bg-blue-600 hover:bg-blue-700">
+                Go to Settings
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/')}>
+                Back to Search
+              </Button>
+            </div>
+            <p className="text-sm text-gray-500 mt-4">
+              Don't have a Perplexity API key?{" "}
+              <a 
+                href="https://docs.perplexity.ai/docs/getting-started" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Get one here
+              </a>
+            </p>
+          </div>
+        </div>
+      </WebLayout>
+    );
+  }
 
   if (loading) {
     return (
