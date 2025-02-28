@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import { validatePerplexityApiKey, hasPerplexityApiKey, setCentralizedPerplexityApiKey, getPerplexityApiKey } from '@/utils/validateApiKey';
+import { useApiKey } from '@/contexts/ApiKeyContext';
 
 interface PerplexityApiKeyFormProps {
   isAdminMode?: boolean;
@@ -11,21 +11,18 @@ interface PerplexityApiKeyFormProps {
 }
 
 const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: PerplexityApiKeyFormProps) => {
+  const { perplexityApiKey, setPerplexityApiKey, removePerplexityApiKey, isValidPerplexityApiKey } = useApiKey();
   const [apiKey, setApiKey] = useState('');
-  const [storedKey, setStoredKey] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    const key = getPerplexityApiKey();
-    setStoredKey(key);
-    
-    if (key) {
-      // If we have a stored key, we don't show the actual key but a placeholder
-      setApiKey(isAdminMode ? key : '••••••••••••••••••••••••••••••••');
+    if (perplexityApiKey) {
+      // If we have a stored key, mask it with asterisks for security
+      setApiKey(isAdminMode ? perplexityApiKey : '••••••••••••••••••••••••••••••••');
       setIsValid(true);
     }
-  }, [isAdminMode]);
+  }, [perplexityApiKey, isAdminMode]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,54 +31,41 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
       return;
     }
     
-    if (validatePerplexityApiKey(apiKey)) {
-      console.log('Setting API key in centralized mode:', isAdminMode);
-      if (isAdminMode || apiKey === 'pk-admin-centralized-key') {
-        const success = setCentralizedPerplexityApiKey(apiKey);
-        if (success) {
-          setStoredKey(apiKey);
-          setShowSuccess(true);
-          setTimeout(() => setShowSuccess(false), 3000);
-          if (onKeySubmitted) onKeySubmitted();
-        }
-      } else {
-        localStorage.setItem('PERPLEXITY_API_KEY', apiKey);
-        setStoredKey(apiKey);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
-        if (onKeySubmitted) onKeySubmitted();
-      }
+    if (isValidPerplexityApiKey(apiKey)) {
+      console.log('Setting API key, is admin mode:', isAdminMode);
+      setPerplexityApiKey(apiKey);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+      if (onKeySubmitted) onKeySubmitted();
     }
   };
 
   const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setApiKey(value);
-    setIsValid(validatePerplexityApiKey(value));
+    setIsValid(isValidPerplexityApiKey(value));
   };
 
   const clearApiKey = () => {
-    localStorage.removeItem('PERPLEXITY_API_KEY');
+    removePerplexityApiKey();
     setApiKey('');
-    setStoredKey(null);
     setIsValid(false);
   };
 
   // Automatically set the provided key if this is in admin mode and we don't have a key yet
   useEffect(() => {
-    if (isAdminMode && !storedKey) {
-      // Set the key automatically if on first load
+    if (isAdminMode && !perplexityApiKey) {
+      // Set the key automatically on first load
       const keyToSet = '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';
-      if (validatePerplexityApiKey(keyToSet)) {
+      if (isValidPerplexityApiKey(keyToSet)) {
         setApiKey(keyToSet);
         setIsValid(true);
-        setCentralizedPerplexityApiKey(keyToSet);
-        setStoredKey(keyToSet);
+        setPerplexityApiKey(keyToSet);
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
       }
     }
-  }, [isAdminMode, storedKey]);
+  }, [isAdminMode, perplexityApiKey, setPerplexityApiKey, isValidPerplexityApiKey]);
 
   return (
     <div className="space-y-4">
@@ -106,7 +90,7 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
               onChange={handleKeyChange}
               placeholder={isAdminMode ? "Enter centralized API key" : "Enter your API key"}
               className={`pr-8 ${isValid ? 'border-green-500' : apiKey ? 'border-red-500' : ''}`}
-              type={isAdminMode ? "text" : (storedKey ? "password" : "text")}
+              type={isAdminMode ? "text" : (perplexityApiKey ? "password" : "text")}
             />
             {apiKey && (
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
@@ -120,10 +104,10 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
           </div>
           
           <Button type="submit" disabled={!isValid}>
-            {storedKey ? "Update" : "Save"}
+            {perplexityApiKey ? "Update" : "Save"}
           </Button>
           
-          {storedKey && (
+          {perplexityApiKey && (
             <Button type="button" variant="outline" onClick={clearApiKey}>
               Clear
             </Button>
@@ -134,13 +118,13 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
       {showSuccess && (
         <div className="bg-green-100 text-green-800 p-2 rounded-md flex items-center">
           <CheckCircle2 className="h-4 w-4 mr-2" />
-          <span className="text-sm">API key {storedKey ? "updated" : "saved"} successfully!</span>
+          <span className="text-sm">API key {perplexityApiKey ? "updated" : "saved"} successfully!</span>
         </div>
       )}
       
-      {isAdminMode && storedKey && (
+      {isAdminMode && perplexityApiKey && (
         <div className="text-xs text-muted-foreground mt-2">
-          <p>Current centralized key: {storedKey.substring(0, 5)}...{storedKey.substring(storedKey.length - 5)}</p>
+          <p>Current centralized key: {perplexityApiKey.substring(0, 5)}...{perplexityApiKey.substring(perplexityApiKey.length - 5)}</p>
           <p className="mt-1">All users will use this key for AI functionality.</p>
         </div>
       )}
