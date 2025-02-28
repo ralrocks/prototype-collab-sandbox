@@ -167,22 +167,29 @@ const getAmadeusToken = async (): Promise<string> => {
   }
 };
 
-export const fetchFlights = async (from: string, to: string, departureDate: string = '2023-12-10'): Promise<Flight[]> => {
-  console.log(`Fetching flights from ${from} to ${to} for ${departureDate}`);
+export const fetchFlights = async (
+  from: string, 
+  to: string, 
+  departureDate: string = '2023-12-10',
+  returnDate?: string,
+  tripType: 'oneway' | 'roundtrip' = 'oneway'
+): Promise<Flight[]> => {
+  console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
   
   try {
     // In production implementation, get the token and use it to fetch flights
     const token = await getAmadeusToken();
     
     // In production:
-    // const response = await fetch(
-    //   `https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=${from}&destinationLocationCode=${to}&departureDate=${departureDate}&adults=1&nonStop=true&max=10`,
-    //   {
-    //     headers: {
-    //       'Authorization': `Bearer ${token}`
-    //     }
+    // const url = `https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=${from}&destinationLocationCode=${to}&departureDate=${departureDate}&adults=1&nonStop=true&max=10`;
+    // if (tripType === 'roundtrip' && returnDate) {
+    //   url += `&returnDate=${returnDate}`;
+    // }
+    // const response = await fetch(url, {
+    //   headers: {
+    //     'Authorization': `Bearer ${token}`
     //   }
-    // );
+    // });
     // const data: AmadeusFlightResponse = await response.json();
     
     // For development purposes, we'll use a mock response
@@ -199,7 +206,7 @@ export const fetchFlights = async (from: string, to: string, departureDate: stri
         source: "GDS",
         instantTicketingRequired: false,
         nonHomogeneous: false,
-        oneWay: false,
+        oneWay: tripType === 'oneway',
         lastTicketingDate: "2023-12-05",
         numberOfBookableSeats: 9,
         itineraries: [
@@ -283,7 +290,7 @@ export const fetchFlights = async (from: string, to: string, departureDate: stri
     };
     
     // Transform the flights to our application format
-    return transformFlightData(mockApiResponse);
+    return transformFlightData(mockApiResponse, tripType);
   } catch (error) {
     console.error('Error fetching flights:', error);
     throw error;
@@ -291,7 +298,7 @@ export const fetchFlights = async (from: string, to: string, departureDate: stri
 };
 
 // Helper function to transform API data to our application's format
-export const transformFlightData = (apiResponse: AmadeusFlightResponse): Flight[] => {
+export const transformFlightData = (apiResponse: AmadeusFlightResponse, tripType: 'oneway' | 'roundtrip' = 'oneway'): Flight[] => {
   return apiResponse.data.map((flight) => {
     // Get basic flight details
     const carrierCode = flight.validatingAirlineCodes[0] || flight.itineraries[0].segments[0].carrierCode;
@@ -315,6 +322,7 @@ export const transformFlightData = (apiResponse: AmadeusFlightResponse): Flight[
       attribute: airlineName,
       question1: `${departure} → ${arrival} (${formatTime(departureTime)} - ${formatTime(arrivalTime)})`,
       price: price,
+      tripType: tripType,
       // Add additional details that might be useful
       details: {
         flightNumber: `${carrierCode}${segment.number}`,

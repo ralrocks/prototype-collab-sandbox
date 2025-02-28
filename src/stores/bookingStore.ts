@@ -10,21 +10,29 @@ interface Housing {
 }
 
 interface BookingState {
-  selectedFlight: Flight | null;
+  selectedOutboundFlight: Flight | null;
+  selectedReturnFlight: Flight | null;
   selectedHousing: Housing[];
-  setSelectedFlight: (flight: Flight) => void;
+  isRoundTrip: boolean;
+  setSelectedOutboundFlight: (flight: Flight) => void;
+  setSelectedReturnFlight: (flight: Flight) => void;
   addHousing: (housing: Housing) => void;
   removeHousing: (housingId: number) => void;
   setSelectedHousing: (housing: Housing[]) => void;
+  setIsRoundTrip: (isRoundTrip: boolean) => void;
   calculateTotal: () => number;
   resetBooking: () => void;
 }
 
 export const useBookingStore = create<BookingState>((set, get) => ({
-  selectedFlight: null,
+  selectedOutboundFlight: null,
+  selectedReturnFlight: null,
   selectedHousing: [],
+  isRoundTrip: false,
   
-  setSelectedFlight: (flight) => set({ selectedFlight: flight }),
+  setSelectedOutboundFlight: (flight) => set({ selectedOutboundFlight: flight }),
+  
+  setSelectedReturnFlight: (flight) => set({ selectedReturnFlight: flight }),
   
   addHousing: (housing) => set((state) => ({
     selectedHousing: [...state.selectedHousing, housing]
@@ -36,17 +44,22 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   
   setSelectedHousing: (housing) => set({ selectedHousing: housing }),
   
+  setIsRoundTrip: (isRoundTrip) => set({ isRoundTrip }),
+  
   calculateTotal: () => {
     const state = get();
-    const flightPrice = state.selectedFlight?.price || 0;
+    const outboundFlightPrice = state.selectedOutboundFlight?.price || 0;
+    const returnFlightPrice = state.selectedReturnFlight?.price || 0;
     const housingTotal = state.selectedHousing.reduce((sum, item) => sum + item.price, 0);
     const additionalFees = 2500; // SAX to Section fee
     
-    return flightPrice + housingTotal + additionalFees;
+    return outboundFlightPrice + returnFlightPrice + housingTotal + additionalFees;
   },
   
   resetBooking: () => set({
-    selectedFlight: null,
-    selectedHousing: []
+    selectedOutboundFlight: null,
+    selectedReturnFlight: null,
+    selectedHousing: [],
+    isRoundTrip: false
   })
 }));

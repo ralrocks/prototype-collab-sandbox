@@ -4,6 +4,7 @@ export interface Flight {
   attribute: string;
   question1: string;
   price: number;
+  tripType?: 'oneway' | 'roundtrip';
   details?: {
     flightNumber: string;
     duration: string;
@@ -22,4 +23,18 @@ export interface Hotel {
   amenities: string[];
   image: string;
   location: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  fullName?: string;
+  avatarUrl?: string;
+}
+
+export interface UserSettings {
+  emailNotifications: boolean;
+  currency: string;
+  language: string;
+  darkMode: boolean;
 }
