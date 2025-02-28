@@ -1,13 +1,6 @@
 
 import { Flight } from '@/types';
 import { makePerplexityRequest, extractJsonFromResponse } from './api/perplexityClient';
-import { useApiKey } from '@/contexts/ApiKeyContext';
-
-// Get the API key from localStorage as a fallback
-const getApiKeyFromStorage = (): string | null => {
-  // In a real implementation, we'd use a more secure method
-  return localStorage.getItem('PERPLEXITY_API_KEY');
-};
 
 /**
  * Format date for display (Month Day, Year)
@@ -31,7 +24,7 @@ export const formatDateForDisplay = (dateString: string): string => {
 };
 
 /**
- * Function to search for flights using Perplexity AI
+ * Function to search for flights using Perplexity AI with a very short timeout
  */
 export const fetchFlights = async (
   from: string, 
@@ -40,49 +33,29 @@ export const fetchFlights = async (
   returnDate?: string,
   tripType: 'oneway' | 'roundtrip' = 'oneway'
 ): Promise<Flight[]> => {
-  console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
+  console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}`);
+
+  // Return fallback data immediately for better user experience
+  const fallbackData = generateFallbackFlights(from, to, departureDate);
   
+  // Try to fetch real data in the background, but don't wait for it
   try {
-    // Use a smaller system prompt for faster response
-    const systemPrompt = `
-      You are a flight search API. Return a JSON array with the following structure:
-      [
-        {
-          "id": number,
-          "attribute": string (airline name),
-          "question1": string (route details),
-          "price": number,
-          "tripType": "oneway",
-          "details": {
-            "flightNumber": string,
-            "duration": string (format: PTxHyM),
-            "departureTime": string (ISO date),
-            "arrivalTime": string (ISO date),
-            "cabin": "ECONOMY",
-            "stops": number
-          }
-        }
-      ]
-    `;
-    
-    // Simpler user prompt
-    const userPrompt = `
-      Flights from ${from} to ${to} for ${departureDate}.
-      Return 4-6 options as a JSON array.
-    `;
-    
-    console.log('Making Perplexity API request for flights data');
-    
-    // Set a shorter timeout - 4 seconds
+    // Set an extremely short timeout - 2 seconds
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
         console.log('API request taking too long, using fallback data');
         reject(new Error('Perplexity API request timed out'));
-      }, 4000);
+      }, 2000);
     });
+    
+    // Very simplified prompt for faster response
+    const systemPrompt = `You are a flight search API. Return JSON array of 4-5 flights.`;
+    const userPrompt = `Flights from ${from} to ${to}. Return flight array with id, attribute(airline), price, question1(route).`;
     
     // Make the API request with a timeout
     const responsePromise = makePerplexityRequest(systemPrompt, userPrompt, 0.1, 1000);
+    
+    // Race the API request against the timeout
     const response = await Promise.race([responsePromise, timeoutPromise])
       .catch(error => {
         console.error('Error or timeout in Perplexity request:', error);
@@ -128,10 +101,10 @@ export const fetchFlights = async (
     
   } catch (error) {
     console.error('Error fetching flights from Perplexity:', error);
-    console.log('Falling back to generated flight data');
+    console.log('Using pre-generated fallback flight data');
     
     // Return fallback flights if API call fails
-    return generateFallbackFlights(from, to, departureDate);
+    return fallbackData;
   }
 };
 

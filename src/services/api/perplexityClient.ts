@@ -26,6 +26,10 @@ export const makePerplexityRequest = async (
   try {
     console.log(`Making Perplexity API request with model: ${model}`);
     
+    // Abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -47,7 +51,10 @@ export const makePerplexityRequest = async (
         temperature,
         max_tokens: maxTokens,
       }),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -70,6 +77,10 @@ export const makePerplexityRequest = async (
       throw new Error('No content returned from API');
     }
   } catch (error) {
+    if (error.name === 'AbortError') {
+      console.error('Perplexity request aborted due to timeout');
+      throw new Error('Request timed out');
+    }
     console.error('Error making Perplexity request:', error);
     throw error;
   }
