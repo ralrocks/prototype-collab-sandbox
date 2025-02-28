@@ -43,48 +43,46 @@ export const fetchFlights = async (
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
   
   try {
-    // Create a system prompt for Perplexity to generate flight data
+    // Use a smaller system prompt for faster response
     const systemPrompt = `
-      You are a flight search assistant. Provide realistic flight information for the requested route.
-      Return ONLY a JSON array of flight objects with the following structure:
+      You are a flight search API. Return a JSON array with the following structure:
       [
         {
           "id": number,
-          "attribute": "Airline Name",
-          "question1": "Origin → Destination (Departure Time - Arrival Time)",
+          "attribute": string (airline name),
+          "question1": string (route details),
           "price": number,
-          "tripType": "oneway" or "roundtrip",
+          "tripType": "oneway",
           "details": {
-            "flightNumber": "string",
-            "duration": "PTxHxxM", 
-            "departureTime": "ISO date string",
-            "arrivalTime": "ISO date string",
-            "cabin": "ECONOMY" or "BUSINESS" or "FIRST",
+            "flightNumber": string,
+            "duration": string (format: PTxHyM),
+            "departureTime": string (ISO date),
+            "arrivalTime": string (ISO date),
+            "cabin": "ECONOMY",
             "stops": number
           }
         }
       ]
     `;
     
-    // Create a user prompt with the specific flight request
+    // Simpler user prompt
     const userPrompt = `
-      Find flights from ${from} to ${to} for ${departureDate}.
-      Trip type: ${tripType}${returnDate ? `, Return date: ${returnDate}` : ''}.
-      Provide 6-8 realistic flight options with accurate prices, times, and airlines.
+      Flights from ${from} to ${to} for ${departureDate}.
+      Return 4-6 options as a JSON array.
     `;
     
     console.log('Making Perplexity API request for flights data');
-    const startTime = Date.now();
     
-    // Set a timeout promise to handle slow responses
+    // Set a shorter timeout - 4 seconds
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
+        console.log('API request taking too long, using fallback data');
         reject(new Error('Perplexity API request timed out'));
-      }, 8000); // 8 second timeout
+      }, 4000);
     });
     
     // Make the API request with a timeout
-    const responsePromise = makePerplexityRequest(systemPrompt, userPrompt, 0.2);
+    const responsePromise = makePerplexityRequest(systemPrompt, userPrompt, 0.1, 1000);
     const response = await Promise.race([responsePromise, timeoutPromise])
       .catch(error => {
         console.error('Error or timeout in Perplexity request:', error);
@@ -94,8 +92,6 @@ export const fetchFlights = async (
     if (!response) {
       throw new Error('No response from Perplexity API');
     }
-    
-    console.log(`Perplexity API responded in ${Date.now() - startTime}ms`);
     
     // Extract JSON from the response
     const flightData = extractJsonFromResponse(response);

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -57,6 +58,23 @@ const FlightsPage = () => {
 
   useEffect(() => {
     if (!fetchAttempted) {
+      // First, try to load some fallback data instantly to show something
+      const from = localStorage.getItem('fromLocation') || 'LAX';
+      const to = localStorage.getItem('toLocation') || 'JFK';
+      const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
+      
+      const fallbackFlights = generateFallbackFlights(from, to, departureDate);
+      setOutboundFlights(fallbackFlights);
+      
+      const tripType = localStorage.getItem('tripType') || 'oneway';
+      const returnDate = localStorage.getItem('returnDate');
+      
+      if (tripType === 'roundtrip' && returnDate) {
+        const returnFallbackFlights = generateFallbackFlights(to, from, returnDate);
+        setReturnFlights(returnFallbackFlights);
+      }
+      
+      // Then actually fetch the real data
       getFlights();
       setFetchAttempted(true);
     }
@@ -65,7 +83,6 @@ const FlightsPage = () => {
   const getFlights = async () => {
     try {
       setLoading(true);
-      setError(null);
       
       const from = localStorage.getItem('fromLocation') || 'LAX';
       const to = localStorage.getItem('toLocation') || 'JFK';
@@ -74,7 +91,7 @@ const FlightsPage = () => {
       
       console.log('Fetching outbound flights from:', from, 'to:', to, 'on:', departureDate);
       
-      // Get flights directly - with fast fallback
+      // Get flights data - with fast fallback if it takes too long
       const outboundFlightsData = await fetchFlights(from, to, departureDate, undefined, 'oneway');
       
       console.log('Outbound flights received:', outboundFlightsData.length);
@@ -91,26 +108,11 @@ const FlightsPage = () => {
           setReturnFlights(returnFlightsData);
         }
       }
+      setError(null);
     } catch (err: any) {
       console.error('Error fetching flights:', err);
       setError('Failed to load flight data. Please try again.');
       toast.error('Failed to load flights');
-      
-      // Load fallback data even on error
-      const from = localStorage.getItem('fromLocation') || 'LAX';
-      const to = localStorage.getItem('toLocation') || 'JFK';
-      const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
-      
-      const fallbackFlights = generateFallbackFlights(from, to, departureDate);
-      setOutboundFlights(fallbackFlights);
-      
-      const tripType = localStorage.getItem('tripType') || 'oneway';
-      const returnDate = localStorage.getItem('returnDate');
-      
-      if (tripType === 'roundtrip' && returnDate) {
-        const returnFallbackFlights = generateFallbackFlights(to, from, returnDate);
-        setReturnFlights(returnFallbackFlights);
-      }
     } finally {
       setLoading(false);
     }
@@ -162,26 +164,6 @@ const FlightsPage = () => {
   const sortedOutboundFlights = sortFlights(outboundFlights);
   const sortedReturnFlights = sortFlights(returnFlights);
 
-  // Render functions for different states
-  if (loading) {
-    return (
-      <WebLayout title="Loading Flights..." showBackButton>
-        <FlightsLoading />
-      </WebLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <WebLayout title="Error" showBackButton>
-        <FlightsError 
-          error={error} 
-          onRetry={() => setFetchAttempted(false)} 
-        />
-      </WebLayout>
-    );
-  }
-
   return (
     <AuthGuard>
       <WebLayout title={`Flights: ${fromName} to ${toName}`} showBackButton>
@@ -197,7 +179,14 @@ const FlightsPage = () => {
             setSortBy={setSortBy}
           />
           
-          {isRoundTrip ? (
+          {loading && outboundFlights.length === 0 ? (
+            <FlightsLoading />
+          ) : error && outboundFlights.length === 0 ? (
+            <FlightsError 
+              error={error} 
+              onRetry={() => setFetchAttempted(false)} 
+            />
+          ) : isRoundTrip ? (
             <FlightTabs 
               activeTab={activeTab}
               setActiveTab={setActiveTab}
@@ -221,6 +210,12 @@ const FlightsPage = () => {
                 fromName={fromName}
                 toName={toName}
               />
+            </div>
+          )}
+          
+          {loading && (
+            <div className="my-4 text-center text-sm text-gray-500">
+              Still searching for more flight options...
             </div>
           )}
           
