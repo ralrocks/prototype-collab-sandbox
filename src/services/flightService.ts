@@ -1,4 +1,3 @@
-
 import { Flight } from '@/types';
 import { makePerplexityRequest, extractJsonFromResponse } from './api/perplexityClient';
 
@@ -24,7 +23,7 @@ export const formatDateForDisplay = (dateString: string): string => {
 };
 
 /**
- * Function to search for flights using Perplexity AI with a very short timeout
+ * Function to search for flights using Perplexity AI with a better timeout strategy
  */
 export const fetchFlights = async (
   from: string, 
@@ -40,17 +39,18 @@ export const fetchFlights = async (
   
   // Try to fetch real data in the background, but don't wait for it
   try {
-    // Set an extremely short timeout - 2 seconds
+    // Set a reasonable timeout for flight search - 8 seconds
+    // This is longer than the perplexityClient timeout to allow for error handling
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
-        console.log('API request taking too long, using fallback data');
-        reject(new Error('Perplexity API request timed out'));
-      }, 2000);
+        console.log('Flight search taking too long, using fallback data');
+        reject(new Error('Flight search timed out'));
+      }, 8000);
     });
     
-    // Very simplified prompt for faster response
+    // Simplified prompt for faster response
     const systemPrompt = `You are a flight search API. Return JSON array of 4-5 flights.`;
-    const userPrompt = `Flights from ${from} to ${to}. Return flight array with id, attribute(airline), price, question1(route).`;
+    const userPrompt = `Flights from ${from} to ${to} on ${departureDate}. Return flight array with id, attribute(airline), price, question1(route).`;
     
     // Make the API request with a timeout
     const responsePromise = makePerplexityRequest(systemPrompt, userPrompt, 0.1, 1000);
@@ -58,7 +58,7 @@ export const fetchFlights = async (
     // Race the API request against the timeout
     const response = await Promise.race([responsePromise, timeoutPromise])
       .catch(error => {
-        console.error('Error or timeout in Perplexity request:', error);
+        console.error('Error or timeout in flight search:', error);
         throw error;
       });
     
@@ -79,6 +79,16 @@ export const fetchFlights = async (
       // Ensure the flight has an id
       if (!flight.id) {
         flight.id = index + 1;
+      }
+      
+      // Handle different attribute naming conventions from API
+      if (!flight.attribute && flight.airline) {
+        flight.attribute = flight.airline;
+      }
+      
+      // Handle different route naming conventions from API
+      if (!flight.question1 && flight.route) {
+        flight.question1 = flight.route;
       }
       
       // Fix any missing details
