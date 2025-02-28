@@ -201,13 +201,32 @@ export const fetchFlights = async (
       const carrierCode = randomCarrierKeys[Math.floor(Math.random() * randomCarrierKeys.length)];
       const price = 150 + Math.floor(Math.random() * 400);
       
+      // Get today's date
+      const today = new Date();
+      // Add 10-15 days for departure date
+      const depDate = new Date(today);
+      depDate.setDate(today.getDate() + 10 + Math.floor(Math.random() * 5));
+      // Format dates in ISO format
+      const depDateTime = new Date(
+        depDate.getFullYear(),
+        depDate.getMonth(),
+        depDate.getDate(),
+        10 + Math.floor(Math.random() * 8), // Hours between 10 AM and 6 PM
+        Math.floor(Math.random() * 60) // Random minutes
+      ).toISOString();
+      
+      // Calculate arrival time (3-6 hours after departure)
+      const arrDate = new Date(depDateTime);
+      arrDate.setHours(arrDate.getHours() + 3 + Math.floor(Math.random() * 3));
+      const arrDateTime = arrDate.toISOString();
+      
       return {
         id: `${index + 1}`,
         source: "GDS",
         instantTicketingRequired: false,
         nonHomogeneous: false,
         oneWay: tripType === 'oneway',
-        lastTicketingDate: "2023-12-05",
+        lastTicketingDate: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5).toISOString().split('T')[0],
         numberOfBookableSeats: 9,
         itineraries: [
           {
@@ -216,11 +235,11 @@ export const fetchFlights = async (
               {
                 departure: {
                   iataCode: from,
-                  at: `2023-12-${10 + Math.floor(Math.random() * 5)}T10:${Math.floor(Math.random() * 60)}:00`
+                  at: depDateTime
                 },
                 arrival: {
                   iataCode: to,
-                  at: `2023-12-${10 + Math.floor(Math.random() * 5)}T15:${Math.floor(Math.random() * 60)}:00`
+                  at: arrDateTime
                 },
                 carrierCode: carrierCode,
                 number: `${Math.floor(Math.random() * 9000) + 1000}`,
@@ -300,39 +319,76 @@ export const fetchFlights = async (
 // Helper function to transform API data to our application's format
 export const transformFlightData = (apiResponse: AmadeusFlightResponse, tripType: 'oneway' | 'roundtrip' = 'oneway'): Flight[] => {
   return apiResponse.data.map((flight) => {
-    // Get basic flight details
-    const carrierCode = flight.validatingAirlineCodes[0] || flight.itineraries[0].segments[0].carrierCode;
-    const airlineName = apiResponse.dictionaries?.carriers?.[carrierCode] || carriers[carrierCode] || "Unknown Airline";
-    const segment = flight.itineraries[0].segments[0];
-    const departure = segment.departure.iataCode;
-    const arrival = segment.arrival.iataCode;
-    const departureTime = new Date(segment.departure.at);
-    const arrivalTime = new Date(segment.arrival.at);
-    
-    // Format times for display
-    const formatTime = (date: Date) => {
-      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    };
-    
-    // Calculate price from the API response
-    const price = parseInt(flight.price.total);
-    
-    return {
-      id: parseInt(flight.id),
-      attribute: airlineName,
-      question1: `${departure} → ${arrival} (${formatTime(departureTime)} - ${formatTime(arrivalTime)})`,
-      price: price,
-      tripType: tripType,
-      // Add additional details that might be useful
-      details: {
-        flightNumber: `${carrierCode}${segment.number}`,
-        duration: flight.itineraries[0].duration,
-        departureTime: departureTime.toISOString(),
-        arrivalTime: arrivalTime.toISOString(),
-        cabin: flight.travelerPricings[0].fareDetailsBySegment[0].cabin,
-        stops: segment.numberOfStops
+    try {
+      // Get basic flight details
+      const carrierCode = flight.validatingAirlineCodes[0] || flight.itineraries[0].segments[0].carrierCode;
+      const airlineName = apiResponse.dictionaries?.carriers?.[carrierCode] || carriers[carrierCode] || "Unknown Airline";
+      const segment = flight.itineraries[0].segments[0];
+      const departure = segment.departure.iataCode;
+      const arrival = segment.arrival.iataCode;
+      
+      // Parse departure and arrival times safely
+      let departureTime: Date;
+      let arrivalTime: Date;
+      
+      try {
+        departureTime = new Date(segment.departure.at);
+        arrivalTime = new Date(segment.arrival.at);
+        
+        // Validate dates are legitimate (will throw if invalid)
+        departureTime.toISOString();
+        arrivalTime.toISOString();
+      } catch (error) {
+        console.error('Invalid date format in flight data:', error);
+        // Fallback to current date/time plus some hours if date is invalid
+        const now = new Date();
+        departureTime = new Date(now.getTime() + 3600000); // +1 hour
+        arrivalTime = new Date(now.getTime() + 7200000);   // +2 hours
       }
-    };
+      
+      // Format times for display
+      const formatTime = (date: Date) => {
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      };
+      
+      // Calculate price from the API response
+      const price = parseInt(flight.price.total);
+      
+      return {
+        id: parseInt(flight.id),
+        attribute: airlineName,
+        question1: `${departure} → ${arrival} (${formatTime(departureTime)} - ${formatTime(arrivalTime)})`,
+        price: price,
+        tripType: tripType,
+        // Add additional details that might be useful
+        details: {
+          flightNumber: `${carrierCode}${segment.number}`,
+          duration: flight.itineraries[0].duration,
+          departureTime: departureTime.toISOString(),
+          arrivalTime: arrivalTime.toISOString(),
+          cabin: flight.travelerPricings[0].fareDetailsBySegment[0].cabin,
+          stops: segment.numberOfStops
+        }
+      };
+    } catch (error) {
+      console.error('Error transforming flight data:', error);
+      // Return a default flight object on error
+      return {
+        id: parseInt(flight.id || '0'),
+        attribute: 'Unknown Airline',
+        question1: 'Unknown Route',
+        price: 0,
+        tripType: tripType,
+        details: {
+          flightNumber: 'N/A',
+          duration: 'PT0H',
+          departureTime: new Date().toISOString(),
+          arrivalTime: new Date().toISOString(),
+          cabin: 'ECONOMY',
+          stops: 0
+        }
+      };
+    }
   });
 };
 
