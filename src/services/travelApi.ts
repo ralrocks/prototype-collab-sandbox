@@ -1,104 +1,7 @@
 
 import { Flight } from '@/types';
 
-// Amadeus API types
-interface AmadeusFlightOffer {
-  id: string;
-  source: string;
-  instantTicketingRequired: boolean;
-  nonHomogeneous: boolean;
-  oneWay: boolean;
-  lastTicketingDate: string;
-  numberOfBookableSeats: number;
-  itineraries: {
-    duration: string;
-    segments: {
-      departure: {
-        iataCode: string;
-        terminal?: string;
-        at: string;
-      };
-      arrival: {
-        iataCode: string;
-        terminal?: string;
-        at: string;
-      };
-      carrierCode: string;
-      number: string;
-      aircraft: {
-        code: string;
-      };
-      operating: {
-        carrierCode: string;
-      };
-      duration: string;
-      id: string;
-      numberOfStops: number;
-      blacklistedInEU: boolean;
-    }[];
-  }[];
-  price: {
-    currency: string;
-    total: string;
-    base: string;
-    fees: {
-      amount: string;
-      type: string;
-    }[];
-    grandTotal: string;
-  };
-  pricingOptions: {
-    fareType: string[];
-    includedCheckedBagsOnly: boolean;
-  };
-  validatingAirlineCodes: string[];
-  travelerPricings: {
-    travelerId: string;
-    fareOption: string;
-    travelerType: string;
-    price: {
-      currency: string;
-      total: string;
-      base: string;
-    };
-    fareDetailsBySegment: {
-      segmentId: string;
-      cabin: string;
-      fareBasis: string;
-      class: string;
-      includedCheckedBags: {
-        quantity: number;
-      };
-    }[];
-  }[];
-}
-
-interface AmadeusFlightResponse {
-  data: AmadeusFlightOffer[];
-  dictionaries?: {
-    carriers?: Record<string, string>;
-    aircraft?: Record<string, string>;
-    currencies?: Record<string, string>;
-    locations?: Record<string, {
-      cityCode: string;
-      countryCode: string;
-    }>;
-  };
-}
-
-interface AmadeusTokenResponse {
-  type: string;
-  username: string;
-  application_name: string;
-  client_id: string;
-  token_type: string;
-  access_token: string;
-  expires_in: number;
-  state: string;
-  scope: string;
-}
-
-// Mock carrier data until we get it from API
+// Mock carrier data
 const carriers: Record<string, string> = {
   'DL': 'Delta Air Lines',
   'AA': 'American Airlines',
@@ -112,59 +15,7 @@ const carriers: Record<string, string> = {
   'G4': 'Allegiant Air',
 };
 
-// Variables to store token data
-let amadeus_token: string | null = null;
-let token_expiry: number | null = null;
-
-// Get Amadeus API token
-const getAmadeusToken = async (): Promise<string> => {
-  // Check if we have a valid token
-  if (amadeus_token && token_expiry && Date.now() < token_expiry) {
-    return amadeus_token;
-  }
-
-  console.log('Getting new Amadeus token');
-  
-  try {
-    // Simulate API token response
-    // In production: 
-    // const response = await fetch('https://test.api.amadeus.com/v1/security/oauth2/token', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/x-www-form-urlencoded'
-    //   },
-    //   body: new URLSearchParams({
-    //     'grant_type': 'client_credentials',
-    //     'client_id': 'YOUR_API_KEY',
-    //     'client_secret': 'YOUR_API_SECRET'
-    //   })
-    // });
-    // const data = await response.json();
-
-    // Mock token response
-    const mockTokenResponse: AmadeusTokenResponse = {
-      type: "amadeusOAuth2Token",
-      username: "mock_user",
-      application_name: "TravelBooker",
-      client_id: "mock_client_id",
-      token_type: "Bearer",
-      access_token: "mock_access_token_" + Math.random().toString(36).substring(2),
-      expires_in: 1800,
-      state: "approved",
-      scope: ""
-    };
-
-    // Save token and expiry
-    amadeus_token = mockTokenResponse.access_token;
-    token_expiry = Date.now() + (mockTokenResponse.expires_in * 1000);
-    
-    return amadeus_token;
-  } catch (error) {
-    console.error('Error getting Amadeus token:', error);
-    throw new Error('Failed to get authorization token');
-  }
-};
-
+// Mock flight data generator with reliable dates
 export const fetchFlights = async (
   from: string, 
   to: string, 
@@ -175,213 +26,83 @@ export const fetchFlights = async (
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
   
   try {
-    // In production implementation, get the token and use it to fetch flights
-    const token = await getAmadeusToken();
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // For development purposes, we'll use a mock response
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+    // Parse the departure date safely
+    let depDate: Date;
+    try {
+      depDate = new Date(departureDate);
+      // Validate date
+      if (isNaN(depDate.getTime())) {
+        console.log('Invalid departure date format, using current date + 10 days');
+        depDate = new Date();
+        depDate.setDate(depDate.getDate() + 10);
+      }
+    } catch (error) {
+      console.log('Error parsing departure date:', error);
+      depDate = new Date();
+      depDate.setDate(depDate.getDate() + 10);
+    }
     
-    // Generate random flight offers
-    const mockFlightOffers: AmadeusFlightOffer[] = Array(6).fill(null).map((_, index) => {
+    // Generate reliable mock flight data
+    const mockFlights: Flight[] = [];
+    
+    // Generate 6 flight options
+    for (let i = 0; i < 6; i++) {
       const randomCarrierKeys = Object.keys(carriers);
       const carrierCode = randomCarrierKeys[Math.floor(Math.random() * randomCarrierKeys.length)];
+      const airlineName = carriers[carrierCode] || "Unknown Airline";
+      
+      // Base price with some randomness
       const price = 150 + Math.floor(Math.random() * 400);
       
-      // Create dates for departure and arrival that are safe to use
-      const today = new Date();
-      const depDate = new Date();
-      depDate.setDate(today.getDate() + 10 + Math.floor(Math.random() * 5));
-      depDate.setHours(10 + Math.floor(Math.random() * 8));
-      depDate.setMinutes(Math.floor(Math.random() * 60));
+      // Create departure and arrival times
+      const departureTime = new Date(depDate);
+      departureTime.setHours(8 + i); // Different hours for different flights
+      departureTime.setMinutes(Math.floor(Math.random() * 60));
       
-      // Format date as an ISO string
-      const depDateTime = depDate.toISOString();
+      // Arrival is 3-5 hours after departure
+      const arrivalTime = new Date(departureTime);
+      arrivalTime.setHours(arrivalTime.getHours() + 3 + Math.floor(Math.random() * 3));
       
-      // Calculate arrival time (3-6 hours after departure)
-      const arrDate = new Date(depDate);
-      arrDate.setHours(arrDate.getHours() + 3 + Math.floor(Math.random() * 3));
-      const arrDateTime = arrDate.toISOString();
+      // Duration in ISO8601 format
+      const durationHours = Math.floor((arrivalTime.getTime() - departureTime.getTime()) / (1000 * 60 * 60));
+      const durationMinutes = Math.floor(((arrivalTime.getTime() - departureTime.getTime()) / (1000 * 60)) % 60);
+      const duration = `PT${durationHours}H${durationMinutes}M`;
       
-      // Create a valid lastTicketingDate
-      const ticketingDate = new Date(today);
-      ticketingDate.setDate(today.getDate() + 5);
-      const lastTicketingDate = ticketingDate.toISOString().split('T')[0];
+      // Flight number
+      const flightNumber = `${carrierCode}${1000 + Math.floor(Math.random() * 9000)}`;
       
-      return {
-        id: `${index + 1}`,
-        source: "GDS",
-        instantTicketingRequired: false,
-        nonHomogeneous: false,
-        oneWay: tripType === 'oneway',
-        lastTicketingDate: lastTicketingDate,
-        numberOfBookableSeats: 9,
-        itineraries: [
-          {
-            duration: "PT5H30M",
-            segments: [
-              {
-                departure: {
-                  iataCode: from,
-                  at: depDateTime
-                },
-                arrival: {
-                  iataCode: to,
-                  at: arrDateTime
-                },
-                carrierCode: carrierCode,
-                number: `${Math.floor(Math.random() * 9000) + 1000}`,
-                aircraft: {
-                  code: "32N"
-                },
-                operating: {
-                  carrierCode: carrierCode
-                },
-                duration: "PT5H30M",
-                id: `${index}`,
-                numberOfStops: 0,
-                blacklistedInEU: false
-              }
-            ]
-          }
-        ],
-        price: {
-          currency: "USD",
-          total: price.toString(),
-          base: (price - 50).toString(),
-          fees: [
-            {
-              amount: "50.00",
-              type: "SUPPLIER"
-            }
-          ],
-          grandTotal: price.toString()
-        },
-        pricingOptions: {
-          fareType: ["PUBLISHED"],
-          includedCheckedBagsOnly: false
-        },
-        validatingAirlineCodes: [carrierCode],
-        travelerPricings: [
-          {
-            travelerId: "1",
-            fareOption: "STANDARD",
-            travelerType: "ADULT",
-            price: {
-              currency: "USD",
-              total: price.toString(),
-              base: (price - 50).toString()
-            },
-            fareDetailsBySegment: [
-              {
-                segmentId: "1",
-                cabin: "ECONOMY",
-                fareBasis: "ELIGHT",
-                class: "E",
-                includedCheckedBags: {
-                  quantity: 1
-                }
-              }
-            ]
-          }
-        ]
-      };
-    });
-    
-    // Mock API response
-    const mockApiResponse: AmadeusFlightResponse = {
-      data: mockFlightOffers,
-      dictionaries: {
-        carriers: carriers
-      }
-    };
-    
-    // Transform the flights to our application format
-    return transformFlightData(mockApiResponse, tripType);
-  } catch (error) {
-    console.error('Error fetching flights:', error);
-    throw error;
-  }
-};
-
-// Helper function to transform API data to our application's format
-export const transformFlightData = (apiResponse: AmadeusFlightResponse, tripType: 'oneway' | 'roundtrip' = 'oneway'): Flight[] => {
-  return apiResponse.data.map((flight) => {
-    try {
-      // Get basic flight details
-      const carrierCode = flight.validatingAirlineCodes[0] || flight.itineraries[0].segments[0].carrierCode;
-      const airlineName = apiResponse.dictionaries?.carriers?.[carrierCode] || carriers[carrierCode] || "Unknown Airline";
-      const segment = flight.itineraries[0].segments[0];
-      const departure = segment.departure.iataCode;
-      const arrival = segment.arrival.iataCode;
+      // Number of stops (mostly direct flights)
+      const stops = Math.random() > 0.7 ? Math.floor(Math.random() * 2) + 1 : 0;
       
-      // Parse dates safely
-      let departureTime: Date | null = null;
-      let arrivalTime: Date | null = null;
+      // Cabin types
+      const cabinTypes = ['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST'];
+      const cabin = cabinTypes[Math.floor(Math.random() * 2)]; // Mostly economy or premium economy
       
-      try {
-        departureTime = new Date(segment.departure.at);
-        arrivalTime = new Date(segment.arrival.at);
-        
-        // Check if dates are valid
-        if (isNaN(departureTime.getTime()) || isNaN(arrivalTime.getTime())) {
-          throw new Error('Invalid date');
-        }
-      } catch (error) {
-        console.error('Invalid date in flight data:', error);
-        // Use current time plus offsets as fallback
-        const now = new Date();
-        departureTime = new Date(now.getTime() + 3600000); // +1 hour
-        arrivalTime = new Date(now.getTime() + 7200000);   // +2 hours
-      }
-      
-      // Format times for display
-      const formatTime = (date: Date) => {
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      };
-      
-      // Calculate price from the API response
-      const price = parseInt(flight.price.total);
-      
-      // Ensure we have valid ISO strings for dates
-      const departureDateISOString = departureTime.toISOString();
-      const arrivalDateISOString = arrivalTime.toISOString();
-      
-      return {
-        id: parseInt(flight.id),
+      mockFlights.push({
+        id: i + 1,
         attribute: airlineName,
-        question1: `${departure} → ${arrival} (${formatTime(departureTime)} - ${formatTime(arrivalTime)})`,
+        question1: `${from} → ${to} (${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`,
         price: price,
         tripType: tripType,
-        // Add additional details that might be useful
         details: {
-          flightNumber: `${carrierCode}${segment.number}`,
-          duration: flight.itineraries[0].duration,
-          departureTime: departureDateISOString,
-          arrivalTime: arrivalDateISOString,
-          cabin: flight.travelerPricings[0].fareDetailsBySegment[0].cabin,
-          stops: segment.numberOfStops
+          flightNumber: flightNumber,
+          duration: duration,
+          departureTime: departureTime.toISOString(),
+          arrivalTime: arrivalTime.toISOString(),
+          cabin: cabin,
+          stops: stops
         }
-      };
-    } catch (error) {
-      console.error('Error transforming flight data:', error);
-      // Return a default flight object on error
-      return {
-        id: parseInt(flight.id || '0'),
-        attribute: 'Unknown Airline',
-        question1: 'Unknown Route',
-        price: 0,
-        tripType: tripType,
-        details: {
-          flightNumber: 'N/A',
-          duration: 'PT0H',
-          departureTime: new Date().toISOString(),
-          arrivalTime: new Date().toISOString(),
-          cabin: 'ECONOMY',
-          stops: 0
-        }
-      };
+      });
     }
-  });
+    
+    return mockFlights;
+  } catch (error) {
+    console.error('Error generating mock flight data:', error);
+    throw new Error('Failed to load flight data. Please try again.');
+  }
 };
 
 // Function to get hotel recommendations (mock implementation)
@@ -392,7 +113,6 @@ export const fetchHotels = async (city: string, checkIn: string, checkOut: strin
   await new Promise(resolve => setTimeout(resolve, 1000));
   
   // Return mock hotel data
-  // In production, you would integrate with Amadeus Hotel API
   const hotels = [
     {
       id: 1,
@@ -446,13 +166,9 @@ export const fetchHotels = async (city: string, checkIn: string, checkOut: strin
 
 // Perplexity API integration for travel recommendations
 export const getDestinationInfo = async (destination: string): Promise<string> => {
-  // In production, you would use actual Perplexity API key
-  // const apiKey = process.env.PERPLEXITY_API_KEY or from localStorage
-  
   console.log(`Getting information about ${destination}`);
   
   // This is a mock implementation
-  // In production you would use the actual Perplexity API
   await new Promise(resolve => setTimeout(resolve, 1500));
   
   const destinations: Record<string, string> = {

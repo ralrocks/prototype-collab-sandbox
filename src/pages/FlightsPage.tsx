@@ -35,13 +35,14 @@ const FlightsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'price' | 'time'>('price');
   const [activeTab, setActiveTab] = useState<'outbound' | 'return'>('outbound');
-  const [isDataFetched, setIsDataFetched] = useState(false);
+  const [fetchAttempted, setFetchAttempted] = useState(false);
 
   useEffect(() => {
-    if (!isDataFetched) {
+    if (!fetchAttempted) {
       getFlights();
+      setFetchAttempted(true);
     }
-  }, [isDataFetched]);
+  }, [fetchAttempted]);
 
   const getFlights = async () => {
     try {
@@ -56,22 +57,20 @@ const FlightsPage = () => {
       console.log('Fetching outbound flights from:', from, 'to:', to, 'on:', departureDate);
       
       // Fetch outbound flights
-      const apiOutboundFlightData = await fetchFlights(from, to, departureDate, undefined, 'oneway');
-      console.log('Outbound flights received:', apiOutboundFlightData.length);
-      setOutboundFlights(apiOutboundFlightData);
+      const outboundFlightsData = await fetchFlights(from, to, departureDate, undefined, 'oneway');
+      console.log('Outbound flights received:', outboundFlightsData.length);
+      setOutboundFlights(outboundFlightsData);
       
       // If round trip, also fetch return flights
       if (tripType === 'roundtrip') {
         const returnDate = localStorage.getItem('returnDate');
         if (returnDate) {
           console.log('Fetching return flights from:', to, 'to:', from, 'on:', returnDate);
-          const apiReturnFlightData = await fetchFlights(to, from, returnDate, undefined, 'oneway');
-          console.log('Return flights received:', apiReturnFlightData.length);
-          setReturnFlights(apiReturnFlightData);
+          const returnFlightsData = await fetchFlights(to, from, returnDate, undefined, 'oneway');
+          console.log('Return flights received:', returnFlightsData.length);
+          setReturnFlights(returnFlightsData);
         }
       }
-      
-      setIsDataFetched(true);
     } catch (err) {
       console.error('Error fetching flights:', err);
       setError('Failed to load flight data. Please try again.');
@@ -147,8 +146,7 @@ const FlightsPage = () => {
           <div className="text-center">
             <p className="text-red-500 mb-4">{error}</p>
             <Button onClick={() => {
-              setIsDataFetched(false);
-              getFlights();
+              setFetchAttempted(false);
             }}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Try Again
