@@ -6,7 +6,7 @@ import { ArrowRight } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
-import { fetchFlights } from '@/services/travelApi';
+import { fetchFlights } from '@/services/flightService';
 import { Flight } from '@/types';
 import { AuthGuard } from '@/components/AuthGuard';
 
@@ -75,8 +75,22 @@ const FlightsPage = () => {
       
       console.log('Fetching outbound flights from:', from, 'to:', to, 'on:', departureDate);
       
-      // Fetch outbound flights
-      const outboundFlightsData = await fetchFlights(from, to, departureDate, undefined, 'oneway');
+      // Create a promise that resolves after 5 seconds with fallback data
+      const timeoutPromise = new Promise<Flight[]>((resolve) => {
+        setTimeout(() => {
+          console.log('Search taking too long, using fallback data');
+          import('@/services/flightService').then(module => {
+            resolve(module.generateFallbackFlights(from, to, departureDate));
+          });
+        }, 5000);
+      });
+      
+      // Race between actual API request and timeout
+      const outboundFlightsData = await Promise.race([
+        fetchFlights(from, to, departureDate, undefined, 'oneway'),
+        timeoutPromise
+      ]);
+      
       console.log('Outbound flights received:', outboundFlightsData.length);
       setOutboundFlights(outboundFlightsData);
       
@@ -85,7 +99,20 @@ const FlightsPage = () => {
         const returnDate = localStorage.getItem('returnDate');
         if (returnDate) {
           console.log('Fetching return flights from:', to, 'to:', from, 'on:', returnDate);
-          const returnFlightsData = await fetchFlights(to, from, returnDate, undefined, 'oneway');
+          
+          // Another race for return flights
+          const returnFlightsData = await Promise.race([
+            fetchFlights(to, from, returnDate, undefined, 'oneway'),
+            new Promise<Flight[]>((resolve) => {
+              setTimeout(() => {
+                console.log('Return search taking too long, using fallback data');
+                import('@/services/flightService').then(module => {
+                  resolve(module.generateFallbackFlights(to, from, returnDate));
+                });
+              }, 5000);
+            })
+          ]);
+          
           console.log('Return flights received:', returnFlightsData.length);
           setReturnFlights(returnFlightsData);
         }
@@ -94,6 +121,24 @@ const FlightsPage = () => {
       console.error('Error fetching flights:', err);
       setError('Failed to load flight data. Please try again.');
       toast.error('Failed to load flights');
+      
+      // Load fallback data even on error
+      const from = localStorage.getItem('fromLocation') || 'LAX';
+      const to = localStorage.getItem('toLocation') || 'JFK';
+      const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
+      
+      import('@/services/flightService').then(module => {
+        const fallbackFlights = module.generateFallbackFlights(from, to, departureDate);
+        setOutboundFlights(fallbackFlights);
+        
+        const tripType = localStorage.getItem('tripType') || 'oneway';
+        const returnDate = localStorage.getItem('returnDate');
+        
+        if (tripType === 'roundtrip' && returnDate) {
+          const returnFallbackFlights = module.generateFallbackFlights(to, from, returnDate);
+          setReturnFlights(returnFallbackFlights);
+        }
+      });
     } finally {
       setLoading(false);
     }

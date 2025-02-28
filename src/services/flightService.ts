@@ -23,6 +23,17 @@ export const formatDateForDisplay = (dateString: string): string => {
   }
 };
 
+// Create a promise with timeout function
+const promiseWithTimeout = (promise, timeoutMs) => {
+  // Create a promise that rejects in <timeoutMs> milliseconds
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
+  );
+  
+  // Returns a race between our timeout and the passed in promise
+  return Promise.race([promise, timeout]);
+};
+
 /**
  * Function to search for flights using Perplexity AI
  */
@@ -61,8 +72,13 @@ export const fetchFlights = async (
       ...5 more similar objects
     ]`;
     
-    // Make the API request
-    const content = await makePerplexityRequest(systemPrompt, userPrompt);
+    // Make the API request with a 3 second timeout
+    const apiRequestPromise = makePerplexityRequest(systemPrompt, userPrompt);
+    const content = await promiseWithTimeout(apiRequestPromise, 3000)
+      .catch(error => {
+        console.log('API request timed out or failed:', error.message);
+        throw new Error('API request failed or timed out');
+      });
     
     // Parse the JSON from the response
     const flightData = extractJsonFromResponse(content);
