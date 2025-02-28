@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2 } from 'lucide-react';
+import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2, Filter } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,6 +10,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useBookingStore } from '@/stores/bookingStore';
 import { fetchHotels } from '@/services/travelApi';
 import { Hotel } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface HousingOption {
   id: number;
@@ -22,8 +30,19 @@ const AccommodationsPage = () => {
   const navigate = useNavigate();
   const { selectedOutboundFlight, selectedHousing, setSelectedHousing } = useBookingStore();
   const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Filter states
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  const [minRating, setMinRating] = useState<number>(0);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const amenitiesList = [
+    "Free WiFi", "Pool", "Spa", "Restaurant", "Gym", "Breakfast", "Bar", "Parking"
+  ];
 
   useEffect(() => {
     // Redirect if no flight is selected
@@ -57,8 +76,17 @@ const AccommodationsPage = () => {
         
         const city = cityMap[to] || 'New York';
         
-        const hotelData = await fetchHotels(city, departureDate, returnDate);
+        // Define filters
+        const filters = {
+          minPrice: priceRange[0],
+          maxPrice: priceRange[1],
+          minRating: minRating,
+          amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined
+        };
+        
+        const hotelData = await fetchHotels(city, departureDate, returnDate, filters);
         setHotels(hotelData);
+        setFilteredHotels(hotelData);
         setError(null);
       } catch (err) {
         console.error('Error fetching hotels:', err);
@@ -70,7 +98,7 @@ const AccommodationsPage = () => {
     };
     
     fetchHotelData();
-  }, [selectedOutboundFlight, navigate]);
+  }, [selectedOutboundFlight, navigate, priceRange, minRating, selectedAmenities]);
 
   // Convert Hotel objects to HousingOption format for compatibility with existing bookingStore
   const convertToHousingOption = (hotel: Hotel): HousingOption => {
@@ -109,11 +137,19 @@ const AccommodationsPage = () => {
     navigate('/checkout');
   };
 
+  const handleAmenityToggle = (amenity: string) => {
+    setSelectedAmenities(prev => 
+      prev.includes(amenity)
+        ? prev.filter(a => a !== amenity)
+        : [...prev, amenity]
+    );
+  };
+
   const renderAmenityIcon = (amenity: string) => {
-    if (amenity.includes('WiFi')) return <Wifi size={16} className="mr-1" />;
-    if (amenity.includes('Breakfast')) return <Coffee size={16} className="mr-1" />;
-    if (amenity.includes('Restaurant')) return <Utensils size={16} className="mr-1" />;
-    if (amenity.includes('Gym')) return <Dumbbell size={16} className="mr-1" />;
+    if (amenity.toLowerCase().includes('wifi')) return <Wifi size={16} className="mr-1" />;
+    if (amenity.toLowerCase().includes('breakfast')) return <Coffee size={16} className="mr-1" />;
+    if (amenity.toLowerCase().includes('restaurant')) return <Utensils size={16} className="mr-1" />;
+    if (amenity.toLowerCase().includes('gym')) return <Dumbbell size={16} className="mr-1" />;
     return null;
   };
 
@@ -149,86 +185,153 @@ const AccommodationsPage = () => {
     <WebLayout title="Select Accommodations" showBackButton>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-6">Select Your Accommodations</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-semibold">Select Your Accommodations</h2>
+            <Popover open={showFilters} onOpenChange={setShowFilters}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter size={16} />
+                  Filters
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80">
+                <div className="space-y-4">
+                  <h3 className="font-medium">Filter Options</h3>
+                  
+                  <div className="space-y-2">
+                    <Label>Price Range: ${priceRange[0]} - ${priceRange[1]}</Label>
+                    <Slider
+                      defaultValue={[0, 500]}
+                      max={1000}
+                      step={10}
+                      value={priceRange}
+                      onValueChange={(value) => setPriceRange(value as [number, number])}
+                      className="mt-2"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Minimum Rating: {minRating} ★</Label>
+                    <Slider
+                      defaultValue={[0]}
+                      max={5}
+                      step={0.5}
+                      value={[minRating]}
+                      onValueChange={(value) => setMinRating(value[0])}
+                      className="mt-2"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="block mb-2">Amenities</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {amenitiesList.map((amenity) => (
+                        <div key={amenity} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`amenity-${amenity}`}
+                            checked={selectedAmenities.includes(amenity)}
+                            onCheckedChange={() => handleAmenityToggle(amenity)}
+                          />
+                          <label 
+                            htmlFor={`amenity-${amenity}`}
+                            className="text-sm"
+                          >
+                            {amenity}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+          
           <p className="text-gray-600 mb-4">
             Choose where you'll stay during your trip. You can select multiple options.
           </p>
           
           <div className="space-y-6">
-            {hotels.map((hotel) => (
-              <Card 
-                key={hotel.id} 
-                className={`hover:shadow-md transition-all ${
-                  isHousingSelected(hotel.id) ? 'border-2 border-green-500' : ''
-                }`}
-              >
-                <CardContent className="p-0">
-                  <div className="flex flex-col md:flex-row">
-                    <div className="md:w-1/3 h-48 md:h-auto bg-gray-200 relative overflow-hidden">
-                      {hotel.image ? (
-                        <img 
-                          src={hotel.image} 
-                          alt={hotel.name} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <p className="text-gray-400">No image</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="p-4 md:p-6 md:w-2/3 flex flex-col justify-between">
-                      <div>
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="text-lg font-semibold">{hotel.name}</h3>
-                          <div className="flex items-center">
-                            <Star size={16} className="text-yellow-400 fill-yellow-400 mr-1" />
-                            <span>{hotel.rating}</span>
+            {filteredHotels.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No hotels match your filter criteria. Try adjusting your filters.</p>
+              </div>
+            ) : (
+              filteredHotels.map((hotel) => (
+                <Card 
+                  key={hotel.id} 
+                  className={`hover:shadow-md transition-all ${
+                    isHousingSelected(hotel.id) ? 'border-2 border-green-500' : ''
+                  }`}
+                >
+                  <CardContent className="p-0">
+                    <div className="flex flex-col md:flex-row">
+                      <div className="md:w-1/3 h-48 md:h-auto bg-gray-200 relative overflow-hidden">
+                        {hotel.image ? (
+                          <img 
+                            src={hotel.image} 
+                            alt={hotel.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <p className="text-gray-400">No image</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="p-4 md:p-6 md:w-2/3 flex flex-col justify-between">
+                        <div>
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="text-lg font-semibold">{hotel.name}</h3>
+                            <div className="flex items-center">
+                              <Star size={16} className="text-yellow-400 fill-yellow-400 mr-1" />
+                              <span>{hotel.rating}</span>
+                            </div>
+                          </div>
+                          
+                          <p className="text-gray-600 mb-4">{hotel.location}</p>
+                          
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {hotel.amenities.map((amenity, idx) => (
+                              <span 
+                                key={idx} 
+                                className="bg-gray-100 text-gray-800 text-xs py-1 px-2 rounded-full flex items-center"
+                              >
+                                {renderAmenityIcon(amenity)}
+                                {amenity}
+                              </span>
+                            ))}
                           </div>
                         </div>
                         
-                        <p className="text-gray-600 mb-4">{hotel.location}</p>
-                        
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {hotel.amenities.map((amenity, idx) => (
-                            <span 
-                              key={idx} 
-                              className="bg-gray-100 text-gray-800 text-xs py-1 px-2 rounded-full flex items-center"
+                        <div className="flex items-center justify-between mt-4">
+                          <div>
+                            <span className="text-lg font-bold">${hotel.price}</span>
+                            <span className="text-gray-600 text-sm"> / night</span>
+                          </div>
+                          
+                          <div className="flex items-center">
+                            <Checkbox
+                              id={`hotel-${hotel.id}`}
+                              checked={isHousingSelected(hotel.id)}
+                              onCheckedChange={() => handleHousingToggle(hotel)}
+                              className="mr-2"
+                            />
+                            <label 
+                              htmlFor={`hotel-${hotel.id}`}
+                              className="text-sm cursor-pointer"
                             >
-                              {renderAmenityIcon(amenity)}
-                              {amenity}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between mt-4">
-                        <div>
-                          <span className="text-lg font-bold">${hotel.price}</span>
-                          <span className="text-gray-600 text-sm"> / night</span>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <Checkbox
-                            id={`hotel-${hotel.id}`}
-                            checked={isHousingSelected(hotel.id)}
-                            onCheckedChange={() => handleHousingToggle(hotel)}
-                            className="mr-2"
-                          />
-                          <label 
-                            htmlFor={`hotel-${hotel.id}`}
-                            className="text-sm cursor-pointer"
-                          >
-                            {isHousingSelected(hotel.id) ? 'Selected' : 'Select'}
-                          </label>
+                              {isHousingSelected(hotel.id) ? 'Selected' : 'Select'}
+                            </label>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
         

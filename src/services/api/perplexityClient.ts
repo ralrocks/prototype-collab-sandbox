@@ -1,38 +1,27 @@
 
 /**
- * Perplexity API client configuration
+ * Utility functions for making API requests to Perplexity
  */
-
-// Base API configuration
-export const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
+import { toast } from 'sonner';
 
 /**
- * Get the Perplexity API key from localStorage
- * @returns The API key or throws an error if not found
+ * Make a request to the Perplexity API
  */
-export const getPerplexityApiKey = (): string => {
+export const makePerplexityRequest = async (
+  systemPrompt: string, 
+  userPrompt: string,
+  temperature: number = 0.2,
+  maxTokens: number = 2000
+): Promise<string> => {
+  // Fetch API key from localStorage
   const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
   
   if (!apiKey) {
     throw new Error('Perplexity API key not found. Please add your API key in settings.');
   }
   
-  return apiKey;
-};
-
-/**
- * Make a request to the Perplexity API
- */
-export const makePerplexityRequest = async (
-  systemPrompt: string,
-  userPrompt: string,
-  temperature: number = 0.2,
-  maxTokens: number = 2000
-): Promise<string> => {
-  const apiKey = getPerplexityApiKey();
-  
   try {
-    const response = await fetch(PERPLEXITY_API_URL, {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -56,53 +45,45 @@ export const makePerplexityRequest = async (
     });
     
     if (!response.ok) {
-      let errorMessage = `API error: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        console.error('Perplexity API error:', errorData);
-        if (errorData.error && errorData.error.message) {
-          errorMessage = errorData.error.message;
-        }
-      } catch (e) {
-        console.error('Could not parse error response', e);
-      }
-      
-      throw new Error(errorMessage);
+      const errorData = await response.json();
+      console.error('Perplexity API error:', errorData);
+      throw new Error(`API request failed: ${errorData.error?.message || response.statusText}`);
     }
     
     const data = await response.json();
-    return data.choices[0].message.content;
+    if (data.choices && data.choices.length > 0) {
+      return data.choices[0].message.content;
+    } else {
+      throw new Error('No content returned from API');
+    }
   } catch (error) {
-    console.error('Error in Perplexity API request:', error);
+    console.error('Error making Perplexity request:', error);
     throw error;
   }
 };
 
 /**
- * Extract JSON from a response string
+ * Extract JSON from the API response
  */
-export const extractJsonFromResponse = (content: string): any => {
+export const extractJsonFromResponse = (text: string): any => {
   try {
-    // First try to parse the entire content as JSON
+    // Try to parse the entire text as JSON first
+    return JSON.parse(text);
+  } catch (error) {
+    // If not valid JSON, try to extract JSON portion using regex
     try {
-      return JSON.parse(content);
-    } catch (e) {
-      // If that fails, look for JSON array pattern
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      const jsonMatch = text.match(/\[\s*\{.*\}\s*\]/s) || 
+                        text.match(/\{\s*".*"\s*:.*\}/s);
+      
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
-      
-      // If that also fails, look for JSON object pattern
-      const jsonObjectMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonObjectMatch) {
-        return JSON.parse(jsonObjectMatch[0]);
-      }
+    } catch (extractError) {
+      console.error('Error extracting JSON from response:', extractError);
     }
     
-    throw new Error('No valid JSON found in response');
-  } catch (parseError) {
-    console.error('Error parsing JSON from Perplexity:', parseError, content);
-    throw new Error('Failed to parse data');
+    // If all else fails, log the issue and throw an error
+    console.error('Could not extract valid JSON from API response:', text);
+    throw new Error('Could not extract valid JSON from API response');
   }
 };
