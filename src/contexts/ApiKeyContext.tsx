@@ -15,7 +15,7 @@ const ApiKeyContext = createContext<ApiKeyContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'PERPLEXITY_API_KEY';
 
-// Using the provided API key
+// Default API key
 const DEFAULT_API_KEY = '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';
 
 export function ApiKeyProvider({ children }: { children: ReactNode }) {
@@ -25,13 +25,23 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
   // Initialize API key on mount
   useEffect(() => {
     try {
-      // Set the provided key
-      localStorage.setItem(LOCAL_STORAGE_KEY, DEFAULT_API_KEY);
-      setPerplexityApiKeyState(DEFAULT_API_KEY);
-      console.log('Using provided Perplexity API key');
-      setApiKeyError(null);
+      // Check if we have a stored key first
+      const storedKey = localStorage.getItem(LOCAL_STORAGE_KEY);
+      
+      if (storedKey) {
+        console.log('Found stored Perplexity API key');
+        setPerplexityApiKeyState(storedKey);
+        setApiKeyError(null);
+      } else {
+        // Set the default key if none is stored
+        console.log('No stored key found, using default Perplexity API key');
+        localStorage.setItem(LOCAL_STORAGE_KEY, DEFAULT_API_KEY);
+        setPerplexityApiKeyState(DEFAULT_API_KEY);
+      }
     } catch (error) {
       console.error('Error setting up API key:', error);
+      // Set default key as fallback in case of error
+      setPerplexityApiKeyState(DEFAULT_API_KEY);
     }
   }, []);
   
@@ -97,7 +107,7 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
     perplexityApiKey,
     setPerplexityApiKey: storePerplexityApiKey,
     removePerplexityApiKey,
-    hasPerplexityApiKey: !!perplexityApiKey, // Always true since we have a default key
+    hasPerplexityApiKey: !!perplexityApiKey, // Will be true if we have a key (default or custom)
     isValidPerplexityApiKey,
     apiKeyError,
   };

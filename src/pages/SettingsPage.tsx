@@ -10,15 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { AuthGuard } from '@/components/AuthGuard';
-import PerplexityApiKeyForm from '@/components/PerplexityApiKeyForm';
-import { Switch } from '@/components/ui/switch';
 
 const SettingsPage = () => {
   const { user, profile, signOut, updateProfile } = useAuth();
   const { hasPerplexityApiKey } = useApiKey();
-  const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [fullName, setFullName] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [useCentralizedKey, setUseCentralizedKey] = useState(true);
   
   console.log('Settings page loaded with profile:', profile);
   
@@ -137,7 +134,7 @@ const SettingsPage = () => {
                       </p>
                       
                       <div className="bg-green-50 p-4 rounded-md border border-green-200">
-                        <p className="text-green-800 font-medium">API Key Status: Active</p>
+                        <p className="text-green-800 font-medium">API Key Status: {hasPerplexityApiKey ? 'Active' : 'Loading...'}</p>
                         <p className="text-green-700 text-sm mt-1">All features are available and working properly.</p>
                       </div>
                     </div>
