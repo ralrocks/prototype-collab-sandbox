@@ -31,41 +31,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<ProfileType | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Function to fetch user profile data
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return null;
-      }
-      
-      console.log('Profile data fetched successfully:', data);
-      return data;
-    } catch (error) {
-      console.error('Exception fetching profile:', error);
-      return null;
-    }
-  };
-
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        setLoading(true);
         const { data } = await supabase.auth.getSession();
-        console.log('Auth session data:', data);
-        
         setSession(data.session);
         setUser(data.session?.user || null);
         
         if (data.session?.user) {
-          const profileData = await fetchUserProfile(data.session.user.id);
-          setProfile(profileData);
+          try {
+            const { data: profileData, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.session.user.id)
+              .single();
+            
+            if (error) throw error;
+            setProfile(profileData);
+          } catch (error) {
+            console.error('Error fetching profile:', error);
+          }
         }
       } catch (error) {
         console.error('Error in fetchUser:', error);
@@ -82,8 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user || null);
       
       if (newSession?.user) {
-        const profileData = await fetchUserProfile(newSession.user.id);
-        setProfile(profileData);
+        try {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', newSession.user.id)
+            .single();
+          
+          if (error) throw error;
+          setProfile(profileData);
+        } catch (error) {
+          console.error('Error fetching profile:', error);
+          setProfile(null);
+        }
       } else {
         setProfile(null);
       }
@@ -142,22 +138,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       console.log('Signing out...');
       
-      // First clear state
-      setSession(null);
-      setUser(null);
-      setProfile(null);
+      // First, make sure to delete any localStorage values we want to clear
+      // localStorage.removeItem('PERPLEXITY_API_KEY'); // Uncomment if you want to clear API key on signout
       
-      // Then call Supabase signOut
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Sign out error:', error);
         throw error;
       }
       
+      // Clear state after successful signout
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      
       toast.success('Signed out successfully!');
       
-      // Redirect to auth page after signout
-      window.location.href = '/auth';
+      // Force a page reload to clear any remaining state
+      window.location.href = '/';
     } catch (error: any) {
       console.error('Sign out error caught:', error);
       toast.error(error.message || 'An error occurred during sign out');
@@ -184,9 +182,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       toast.success('Profile updated successfully!');
       
-      // Refresh profile data after update
-      const profileData = await fetchUserProfile(user.id);
-      setProfile(profileData);
+      // Refresh profile data
+      try {
+        const { data: newProfile, error: fetchError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        setProfile(newProfile);
+      } catch (err) {
+        console.error('Error refreshing profile:', err);
+        toast.error('Profile updated but could not refresh data');
+      }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred while updating profile');
       throw error;
