@@ -15,8 +15,8 @@ const ApiKeyContext = createContext<ApiKeyContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'PERPLEXITY_API_KEY';
 
-// Default API key for development purposes
-const DEFAULT_API_KEY = 'pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+// Using the provided API key
+const DEFAULT_API_KEY = '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';
 
 export function ApiKeyProvider({ children }: { children: ReactNode }) {
   const [perplexityApiKey, setPerplexityApiKeyState] = useState<string | null>(null);
@@ -25,9 +25,10 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
   // Initialize API key on mount
   useEffect(() => {
     try {
-      // Use default key for development/demo
+      // Set the provided key
+      localStorage.setItem(LOCAL_STORAGE_KEY, DEFAULT_API_KEY);
       setPerplexityApiKeyState(DEFAULT_API_KEY);
-      console.log('Using default Perplexity API key');
+      console.log('Using provided Perplexity API key');
       setApiKeyError(null);
     } catch (error) {
       console.error('Error setting up API key:', error);
@@ -49,6 +50,7 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
     try {
       // Always allow the default key
       if (key === DEFAULT_API_KEY) {
+        localStorage.setItem(LOCAL_STORAGE_KEY, DEFAULT_API_KEY);
         setPerplexityApiKeyState(DEFAULT_API_KEY);
         setApiKeyError(null);
         console.log('Using default Perplexity API key');
@@ -57,6 +59,7 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
       
       const trimmedKey = key.trim();
       if (isValidPerplexityApiKey(trimmedKey)) {
+        localStorage.setItem(LOCAL_STORAGE_KEY, trimmedKey);
         setPerplexityApiKeyState(trimmedKey);
         setApiKeyError(null);
         console.log('Custom Perplexity API key saved');
@@ -79,6 +82,7 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
   const removePerplexityApiKey = () => {
     try {
       // Reset to default key
+      localStorage.setItem(LOCAL_STORAGE_KEY, DEFAULT_API_KEY);
       setPerplexityApiKeyState(DEFAULT_API_KEY);
       setApiKeyError(null);
       console.log('Reset to default Perplexity API key');

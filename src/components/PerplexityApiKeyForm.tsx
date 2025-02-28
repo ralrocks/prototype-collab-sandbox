@@ -62,7 +62,7 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
   useEffect(() => {
     if (isAdminMode && !perplexityApiKey) {
       // Set the key automatically on first load
-      console.log('Admin mode detected and no existing key, setting default key');
+      console.log('Admin mode detected and no existing key, setting provided key');
       const keyToSet = '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';
       if (isValidPerplexityApiKey(keyToSet)) {
         setApiKey(keyToSet);
@@ -131,8 +131,8 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
       
       {isAdminMode && perplexityApiKey && (
         <div className="text-xs text-muted-foreground mt-2">
-          <p>Current centralized key: {perplexityApiKey.substring(0, 5)}...{perplexityApiKey.substring(perplexityApiKey.length - 5)}</p>
-          <p className="mt-1">All users will use this key for AI functionality.</p>
+          <p>Current key: {perplexityApiKey.substring(0, 5)}...{perplexityApiKey.substring(perplexityApiKey.length - 5)}</p>
+          <p className="mt-1">API key is configured and active.</p>
         </div>
       )}
     </div>

@@ -6,8 +6,7 @@ import { useApiKey } from '@/contexts/ApiKeyContext';
 // Get the API key from localStorage as a fallback
 const getApiKeyFromStorage = (): string | null => {
   // In a real implementation, we'd use a more secure method
-  const DEFAULT_API_KEY = 'pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
-  return DEFAULT_API_KEY;
+  return localStorage.getItem('PERPLEXITY_API_KEY');
 };
 
 /**
@@ -42,14 +41,6 @@ export const fetchFlights = async (
   tripType: 'oneway' | 'roundtrip' = 'oneway'
 ): Promise<Flight[]> => {
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
-  
-  // Get API key - in a real implementation, we would use a better method to get this
-  const apiKey = getApiKeyFromStorage();
-  
-  if (!apiKey) {
-    console.error('No Perplexity API key found, using fallback data');
-    return generateFallbackFlights(from, to, departureDate);
-  }
   
   try {
     // Create a system prompt for Perplexity to generate flight data
@@ -89,11 +80,11 @@ export const fetchFlights = async (
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
         reject(new Error('Perplexity API request timed out'));
-      }, 4000); // 4 second timeout
+      }, 8000); // 8 second timeout
     });
     
     // Make the API request with a timeout
-    const responsePromise = makePerplexityRequest(systemPrompt, userPrompt, apiKey);
+    const responsePromise = makePerplexityRequest(systemPrompt, userPrompt, 0.2);
     const response = await Promise.race([responsePromise, timeoutPromise])
       .catch(error => {
         console.error('Error or timeout in Perplexity request:', error);
