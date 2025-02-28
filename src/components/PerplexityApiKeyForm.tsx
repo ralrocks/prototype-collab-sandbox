@@ -52,73 +52,80 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
     setIsValid(isValidPerplexityApiKey(value));
   };
 
-  const resetToDefaultKey = () => {
+  const clearApiKey = () => {
     removePerplexityApiKey();
-    setApiKey(isAdminMode ? perplexityApiKey || '' : '••••••••••••••••••••••••••••••••');
-    setIsValid(true);
+    setApiKey('');
+    setIsValid(false);
   };
+
+  // Automatically set the provided key if this is in admin mode and we don't have a key yet
+  useEffect(() => {
+    if (isAdminMode && !perplexityApiKey) {
+      // Set the key automatically on first load
+      console.log('Admin mode detected and no existing key, setting default key');
+      const keyToSet = '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';
+      if (isValidPerplexityApiKey(keyToSet)) {
+        setApiKey(keyToSet);
+        setIsValid(true);
+        setPerplexityApiKey(keyToSet);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      }
+    }
+  }, [isAdminMode, perplexityApiKey, setPerplexityApiKey, isValidPerplexityApiKey]);
 
   return (
     <div className="space-y-4">
       <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
         <div className="space-y-1">
           <label htmlFor="apiKey" className="text-sm font-medium">
-            {isAdminMode ? "Centralized Perplexity API Key" : "Perplexity API Key"}
+            {isAdminMode ? "Set Centralized Perplexity API Key" : "Your Perplexity API Key"}
           </label>
           <div className="text-xs text-muted-foreground mb-2">
             {isAdminMode ? 
-              "A default API key is already configured for all users. You can change it here if needed." :
-              "A default API key is configured for you. No need to enter your own key."
+              "As an admin, you can set a centralized API key that all users will use. This eliminates the need for each user to input their own key." :
+              "Enter your API key to enable AI-powered search features"
             }
           </div>
         </div>
         
-        {isAdminMode && (
-          <div className="flex items-center space-x-2">
-            <div className="relative flex-1">
-              <Input
-                id="apiKey"
-                value={apiKey}
-                onChange={handleKeyChange}
-                placeholder="Enter centralized API key"
-                className={`pr-8 ${isValid ? 'border-green-500' : apiKey ? 'border-red-500' : ''}`}
-                type="text"
-              />
-              {apiKey && (
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  {isValid ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-red-500" />
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <Button type="submit" disabled={!isValid}>
-              Update
-            </Button>
-            
-            <Button type="button" variant="outline" onClick={resetToDefaultKey}>
-              Reset to Default
-            </Button>
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1">
+            <Input
+              id="apiKey"
+              value={apiKey}
+              onChange={handleKeyChange}
+              placeholder={isAdminMode ? "Enter centralized API key" : "Enter your API key"}
+              className={`pr-8 ${isValid ? 'border-green-500' : apiKey ? 'border-red-500' : ''}`}
+              type={isAdminMode ? "text" : (perplexityApiKey ? "password" : "text")}
+            />
+            {apiKey && (
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                {isValid ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                )}
+              </div>
+            )}
           </div>
-        )}
-        
-        {!isAdminMode && (
-          <div className="bg-green-50 border border-green-200 rounded-md p-3 flex items-center">
-            <CheckCircle2 className="h-5 w-5 text-green-500 mr-2" />
-            <span className="text-sm text-green-700">
-              API key is configured and ready to use. No action needed.
-            </span>
-          </div>
-        )}
+          
+          <Button type="submit" disabled={!isValid}>
+            {perplexityApiKey ? "Update" : "Save"}
+          </Button>
+          
+          {perplexityApiKey && (
+            <Button type="button" variant="outline" onClick={clearApiKey}>
+              Clear
+            </Button>
+          )}
+        </div>
       </form>
       
       {showSuccess && (
         <div className="bg-green-100 text-green-800 p-2 rounded-md flex items-center">
           <CheckCircle2 className="h-4 w-4 mr-2" />
-          <span className="text-sm">API key updated successfully!</span>
+          <span className="text-sm">API key {perplexityApiKey ? "updated" : "saved"} successfully!</span>
         </div>
       )}
       

@@ -18,7 +18,7 @@ const SettingsPage = () => {
   const { hasPerplexityApiKey } = useApiKey();
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isAdminMode, setIsAdminMode] = useState(true);
+  const [useCentralizedKey, setUseCentralizedKey] = useState(true);
   
   // Update fullName when profile changes
   useEffect(() => {
@@ -131,20 +131,26 @@ const SettingsPage = () => {
                       <h3 className="text-lg font-medium mb-2">Perplexity API</h3>
                       <p className="text-sm text-gray-500 mb-4">
                         Used for real-time flight search, hotel recommendations, and travel information.
+                        <a 
+                          href="https://docs.perplexity.ai/docs/getting-started" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:text-blue-700 ml-1"
+                        >
+                          Get your API key here
+                        </a>
                       </p>
                       
-                      {user?.email === 'admin@example.com' && (
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Switch
-                            id="api-mode"
-                            checked={isAdminMode}
-                            onCheckedChange={setIsAdminMode}
-                          />
-                          <Label htmlFor="api-mode">Show Admin Controls</Label>
-                        </div>
-                      )}
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Switch
+                          id="api-mode"
+                          checked={useCentralizedKey}
+                          onCheckedChange={setUseCentralizedKey}
+                        />
+                        <Label htmlFor="api-mode">Use centralized API key (for all users)</Label>
+                      </div>
                       
-                      <PerplexityApiKeyForm isAdminMode={isAdminMode} />
+                      <PerplexityApiKeyForm isAdminMode={useCentralizedKey} />
                     </div>
                   </div>
                 </CardContent>
