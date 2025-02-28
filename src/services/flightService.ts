@@ -25,7 +25,7 @@ export const formatDateForDisplay = (dateString: string): string => {
 
 /**
  * Function to search for flights using Perplexity AI
- * Now immediately uses fallback data to prevent API timeouts
+ * Now uses fallback data directly to avoid API failures
  */
 export const fetchFlights = async (
   from: string, 
@@ -36,8 +36,15 @@ export const fetchFlights = async (
 ): Promise<Flight[]> => {
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
   
-  // Skip the API request and use fallback data directly
-  return generateFallbackFlights(from, to, departureDate);
+  try {
+    // Always use fallback data instead of trying API calls
+    console.log('Using fallback flight data directly to avoid fetch errors');
+    return generateFallbackFlights(from, to, departureDate);
+  } catch (error) {
+    console.error('Error in fetchFlights:', error);
+    // In case of any error, still return fallback data
+    return generateFallbackFlights(from, to, departureDate);
+  }
 };
 
 /**
@@ -48,7 +55,7 @@ export const generateFallbackFlights = (
   to: string, 
   departureDate: string,
 ): Flight[] => {
-  console.log('Using fallback flights data');
+  console.log('Generating fallback flights data for', from, 'to', to);
   
   // Parse the departure date safely
   let depDate: Date;
