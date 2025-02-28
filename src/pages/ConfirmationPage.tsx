@@ -2,9 +2,10 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
-import PhoneFrame from '@/components/PhoneFrame';
+import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const ConfirmationPage = () => {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ const ConfirmationPage = () => {
 
       const ctx = canvas.getContext('2d')!;
       const pieces: any[] = [];
-      const numberOfPieces = 100;
+      const numberOfPieces = 200;
       const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688'];
 
       for (let i = 0; i < numberOfPieces; i++) {
@@ -78,56 +79,78 @@ const ConfirmationPage = () => {
   };
 
   return (
-    <PhoneFrame>
-      <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6 animate-[bounce_1s_ease-in-out_3]">
+    <WebLayout>
+      <div className="max-w-3xl mx-auto text-center py-8">
+        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6 animate-bounce">
           <Check size={32} className="text-green-600" />
         </div>
         
-        <h1 className="text-2xl font-bold mb-2 animate-slide-up">Booking Complete!</h1>
-        <p className="text-gray-600 mb-6 animate-slide-up animation-delay-100">
-          Your trip has been successfully booked.
+        <h1 className="text-3xl font-bold mb-2">Booking Complete!</h1>
+        <p className="text-gray-600 mb-8 max-w-md mx-auto">
+          Your trip has been successfully booked. You will receive a confirmation email shortly.
         </p>
         
-        <div className="w-full max-w-sm bg-gray-50 rounded-lg p-4 mb-6 animate-slide-up animation-delay-200">
-          <div className="text-sm font-medium mb-2">Trip Summary</div>
-          <div className="text-xs text-gray-600 space-y-2">
-            {selectedFlight && (
-              <div className="flex justify-between">
-                <span>Flight:</span>
-                <span>{selectedFlight.attribute}</span>
+        <Card className="mb-8 text-left">
+          <CardHeader>
+            <CardTitle>Trip Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {selectedFlight && (
+                <div>
+                  <h3 className="font-medium mb-2">Flight Details</h3>
+                  <div className="text-sm text-gray-600">
+                    <p><span className="font-medium">Airline:</span> {selectedFlight.attribute}</p>
+                    <p><span className="font-medium">Route:</span> {selectedFlight.question1}</p>
+                    <p><span className="font-medium">Price:</span> ${selectedFlight.price}</p>
+                  </div>
+                </div>
+              )}
+              
+              {selectedHousing.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-2">Accommodation Details</h3>
+                  <div className="text-sm text-gray-600 space-y-2">
+                    {selectedHousing.map((housing, i) => (
+                      <div key={i} className="p-2 bg-gray-50 rounded">
+                        <p className="font-medium">{housing.title} - ${housing.price}</p>
+                        <p>{housing.bulletPoints[0]}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <div className="border-t pt-4 mt-4">
+                <div className="flex justify-between font-medium">
+                  <span>Total Amount:</span>
+                  <span>${calculateTotal()}</span>
+                </div>
               </div>
-            )}
-            
-            <div className="flex justify-between">
-              <span>Housing:</span>
-              <span>{selectedHousing.length} options selected</span>
             </div>
-            
-            {selectedHousing.map((housing, index) => (
-              <div key={index} className="flex justify-between pl-4 text-[10px]">
-                <span>{housing.title}</span>
-                <span>${housing.price}</span>
-              </div>
-            ))}
-            
-            <div className="flex justify-between font-medium pt-2 border-t">
-              <span>Total:</span>
-              <span>${calculateTotal()}</span>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div className="space-y-3 w-full animate-slide-up animation-delay-300">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button 
             onClick={handleNewBooking}
-            className="w-full p-3 bg-black text-white rounded-lg text-sm font-medium transition-transform active:scale-[0.98]"
+            className="px-8 py-2 bg-black text-white rounded-lg text-base"
+            size="lg"
           >
             Book Another Trip
           </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            className="px-8 py-2"
+            size="lg"
+          >
+            Print Confirmation
+          </Button>
         </div>
       </div>
-    </PhoneFrame>
+    </WebLayout>
   );
 };
 

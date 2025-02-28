@@ -1,9 +1,11 @@
 
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import PhoneFrame from '@/components/PhoneFrame';
+import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -20,68 +22,107 @@ const CheckoutPage = () => {
   };
 
   return (
-    <PhoneFrame title="Review Your Trip" showBackButton>
-      <div className="p-4 flex flex-col h-full">
-        <div className="border border-gray-200 rounded-lg overflow-hidden mb-6 animate-slide-down">
-          <div className="p-3 bg-gray-50 font-medium text-sm border-b">
-            Subtotal for your trip
-          </div>
-          <div className="p-3 space-y-3">
-            {selectedFlight && (
-              <div className="flex justify-between text-sm">
-                <div>Flight: {selectedFlight.attribute}</div>
-                <div>${selectedFlight.price}</div>
-              </div>
-            )}
-            
-            {selectedHousing.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm font-medium">
-                  <div>Selected Housing:</div>
-                  <div>${housingTotal}</div>
-                </div>
-                {selectedHousing.map((housing, index) => (
-                  <div key={index} className="flex justify-between text-xs text-gray-600 pl-2">
-                    <div>{housing.title}</div>
-                    <div>${housing.price}</div>
+    <WebLayout title="Review Your Trip" showBackButton>
+      <div className="max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Trip Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {selectedFlight && (
+                  <div className="mb-6">
+                    <h3 className="font-medium text-lg mb-3">Flight</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between mb-2">
+                        <span>{selectedFlight.attribute}</span>
+                        <span className="font-medium">${selectedFlight.price}</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {selectedFlight.question1}
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-            
-            <div className="border-t pt-3 text-xs text-gray-600">
-              <div className="flex justify-between mb-1">
-                <div>SAX to Section:</div>
-                <div>${additionalFees}</div>
-              </div>
-            </div>
-            
-            <div className="border-t pt-3">
-              <div className="flex justify-between font-semibold">
-                <div>Total First Year Trip</div>
-                <div>${totalPrice}</div>
-              </div>
-            </div>
+                )}
+                
+                {selectedHousing.length > 0 && (
+                  <div>
+                    <h3 className="font-medium text-lg mb-3">Accommodations</h3>
+                    <div className="space-y-3">
+                      {selectedHousing.map((housing, index) => (
+                        <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                          <div className="flex justify-between mb-1">
+                            <span>{housing.title}</span>
+                            <span className="font-medium">${housing.price}</span>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {housing.bulletPoints[0]}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </div>
-        
-        <div className="space-y-3 mt-auto">
-          <Button
-            onClick={() => handleCheckout('green')}
-            className="w-full p-3 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center justify-center text-sm font-medium transition-all"
-          >
-            🟢 Pay Now
-          </Button>
           
-          <Button
-            onClick={() => handleCheckout('purple')}
-            className="w-full p-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg flex items-center justify-center text-sm font-medium transition-all"
-          >
-            🟣 Pay Later
-          </Button>
+          <div className="md:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle>Price Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {selectedFlight && (
+                    <div className="flex justify-between">
+                      <span>Flight</span>
+                      <span>${flightPrice}</span>
+                    </div>
+                  )}
+                  
+                  {selectedHousing.length > 0 && (
+                    <div className="flex justify-between">
+                      <span>Accommodations</span>
+                      <span>${housingTotal}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>SAX to Section</span>
+                    <span>${additionalFees}</span>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="flex justify-between font-semibold text-lg">
+                    <span>Total</span>
+                    <span>${totalPrice}</span>
+                  </div>
+                  
+                  <div className="space-y-3 pt-4">
+                    <Button
+                      onClick={() => handleCheckout('green')}
+                      className="w-full bg-green-500 hover:bg-green-600"
+                    >
+                      🟢 Pay Now
+                    </Button>
+                    
+                    <Button
+                      onClick={() => handleCheckout('purple')}
+                      className="w-full bg-purple-500 hover:bg-purple-600"
+                    >
+                      🟣 Pay Later
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </PhoneFrame>
+    </WebLayout>
   );
 };
 

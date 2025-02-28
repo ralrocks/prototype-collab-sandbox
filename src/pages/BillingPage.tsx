@@ -2,229 +2,206 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Loader } from 'lucide-react';
-import PhoneFrame from '@/components/PhoneFrame';
+import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
-
-interface FormState {
-  name: string;
-  cardNumber: string;
-  expiration: string;
-  cvc: string;
-  address: string;
-  city: string;
-  zip: string;
-}
-
-interface FormErrors {
-  name?: string;
-  cardNumber?: string;
-  expiration?: string;
-  cvc?: string;
-  address?: string;
-  city?: string;
-  zip?: string;
-}
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
 
 const BillingPage = () => {
   const navigate = useNavigate();
+  const [name, setName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zip, setZip] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<FormState>({
-    name: '',
-    cardNumber: '',
-    expiration: '',
-    cvc: '',
-    address: '',
-    city: '',
-    zip: ''
-  });
-  const [errors, setErrors] = useState<FormErrors>({});
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-    
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.cardNumber.trim()) newErrors.cardNumber = "Card number is required";
-    if (!formData.expiration.trim()) newErrors.expiration = "Expiration date is required";
-    if (!formData.cvc.trim()) newErrors.cvc = "CVC is required";
-    if (!formData.address.trim()) newErrors.address = "Address is required";
-    if (!formData.city.trim()) newErrors.city = "City is required";
-    if (!formData.zip.trim()) newErrors.zip = "ZIP code is required";
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
-    if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      setIsSubmitting(true);
-      
-      // Simulate processing
-      setTimeout(() => {
-        setIsSubmitting(false);
-        toast.success("Payment processed successfully!");
-        navigate('/confirmation');
-      }, 1500);
-    } else {
-      toast.error("Please fill all required fields correctly");
+    // Basic form validation
+    if (!name || !cardNumber || !expiry || !cvc || !address || !city || !state || !zip) {
+      toast.error("Please fill in all the required fields");
+      return;
     }
+    
+    // Credit card number validation (simple)
+    if (cardNumber.replace(/\s/g, '').length !== 16) {
+      toast.error("Please enter a valid 16-digit credit card number");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    // Simulate payment processing
+    setTimeout(() => {
+      toast.success("Payment successful!");
+      navigate('/confirmation');
+    }, 2000);
+  };
+
+  const formatCardNumber = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    const groups = [];
+    
+    for (let i = 0; i < numbers.length; i += 4) {
+      groups.push(numbers.slice(i, i + 4));
+    }
+    
+    return groups.join(' ');
+  };
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatCardNumber(e.target.value);
+    setCardNumber(formattedValue);
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    
+    if (value.length > 2) {
+      value = value.slice(0, 2) + '/' + value.slice(2, 4);
+    }
+    
+    setExpiry(value);
   };
 
   return (
-    <PhoneFrame title="Billing Information" showBackButton>
-      <div className="p-4">
-        <form onSubmit={handleSubmit} className="space-y-4 animate-slide-up">
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">
-              Name on Card
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className={`w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="John Smith"
-            />
-            {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
-          </div>
-          
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">
-              Card Number
-            </label>
-            <input
-              type="text"
-              name="cardNumber"
-              value={formData.cardNumber}
-              onChange={handleChange}
-              className={`w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                errors.cardNumber ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="1234 5678 9012 3456"
-            />
-            {errors.cardNumber && <p className="text-xs text-red-500">{errors.cardNumber}</p>}
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="block text-sm font-medium">
-                Expiration
-              </label>
-              <input
-                type="text"
-                name="expiration"
-                value={formData.expiration}
-                onChange={handleChange}
-                className={`w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                  errors.expiration ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="MM/YY"
-              />
-              {errors.expiration && <p className="text-xs text-red-500">{errors.expiration}</p>}
-            </div>
-            
-            <div className="space-y-1">
-              <label className="block text-sm font-medium">
-                CVC
-              </label>
-              <input
-                type="text"
-                name="cvc"
-                value={formData.cvc}
-                onChange={handleChange}
-                className={`w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                  errors.cvc ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="123"
-              />
-              {errors.cvc && <p className="text-xs text-red-500">{errors.cvc}</p>}
-            </div>
-          </div>
-          
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">
-              Billing Address
-            </label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              className={`w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                errors.address ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="123 Main St"
-            />
-            {errors.address && <p className="text-xs text-red-500">{errors.address}</p>}
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="block text-sm font-medium">
-                City
-              </label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className={`w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                  errors.city ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Boston"
-              />
-              {errors.city && <p className="text-xs text-red-500">{errors.city}</p>}
-            </div>
-            
-            <div className="space-y-1">
-              <label className="block text-sm font-medium">
-                ZIP
-              </label>
-              <input
-                type="text"
-                name="zip"
-                value={formData.zip}
-                onChange={handleChange}
-                className={`w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                  errors.zip ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="02108"
-              />
-              {errors.zip && <p className="text-xs text-red-500">{errors.zip}</p>}
-            </div>
-          </div>
-          
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full p-3 bg-black text-white rounded-lg flex items-center justify-center text-sm font-medium mt-4 transition-transform active:scale-[0.98] hover:bg-gray-800"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader size={16} className="mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              'Complete Purchase'
-            )}
-          </Button>
-        </form>
+    <WebLayout title="Payment Information" showBackButton>
+      <div className="max-w-3xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>Billing Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Cardholder Name</Label>
+                  <Input 
+                    id="name" 
+                    value={name} 
+                    onChange={(e) => setName(e.target.value)} 
+                    placeholder="John Smith"
+                    required
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="cardNumber">Card Number</Label>
+                    <Input 
+                      id="cardNumber" 
+                      value={cardNumber} 
+                      onChange={handleCardNumberChange}
+                      placeholder="0000 0000 0000 0000"
+                      maxLength={19}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="expiry">Expiry Date</Label>
+                      <Input 
+                        id="expiry" 
+                        value={expiry} 
+                        onChange={handleExpiryChange}
+                        placeholder="MM/YY"
+                        maxLength={5}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cvc">CVC</Label>
+                      <Input 
+                        id="cvc" 
+                        value={cvc} 
+                        onChange={(e) => setCvc(e.target.value.replace(/\D/g, ''))}
+                        placeholder="123"
+                        maxLength={3}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium mb-4">Billing Address</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="address">Street Address</Label>
+                    <Input 
+                      id="address" 
+                      value={address} 
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="123 Main St" 
+                      required
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="city">City</Label>
+                      <Input 
+                        id="city" 
+                        value={city} 
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="New York" 
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="state">State</Label>
+                      <Input 
+                        id="state" 
+                        value={state} 
+                        onChange={(e) => setState(e.target.value)}
+                        placeholder="NY" 
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="zip">ZIP Code</Label>
+                      <Input 
+                        id="zip" 
+                        value={zip} 
+                        onChange={(e) => setZip(e.target.value.replace(/\D/g, ''))}
+                        placeholder="10001"
+                        maxLength={5}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={isSubmitting}
+                size="lg"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Complete Payment'
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
-    </PhoneFrame>
+    </WebLayout>
   );
 };
 
