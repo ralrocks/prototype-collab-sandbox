@@ -1,6 +1,5 @@
 
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { useEffect } from 'react';
 import SearchPage from '@/pages/SearchPage';
 import FlightsPage from '@/pages/FlightsPage';
 import AccommodationsPage from '@/pages/AccommodationsPage';

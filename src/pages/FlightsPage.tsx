@@ -2,11 +2,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, ArrowRight, Loader2, Calendar, Clock, Plane, Info, RotateCcw, ArrowLeftRight } from 'lucide-react';
+import { Check, ArrowRight, Loader2, Calendar, Clock, Plane, Info, RotateCcw, ArrowLeftRight, RefreshCw } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
-import { fetchFlights, transformFlightData } from '@/services/travelApi';
+import { fetchFlights } from '@/services/travelApi';
 import { Flight } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -37,39 +37,44 @@ const FlightsPage = () => {
   const [activeTab, setActiveTab] = useState<'outbound' | 'return'>('outbound');
 
   useEffect(() => {
-    const getFlights = async () => {
-      try {
-        setLoading(true);
-        const from = localStorage.getItem('fromLocation') || 'LAX';
-        const to = localStorage.getItem('toLocation') || 'JFK';
-        const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
-        const tripType = localStorage.getItem('tripType') || 'oneway';
-        
-        // Fetch outbound flights
-        const apiOutboundFlightData = await fetchFlights(from, to, departureDate, undefined, 'oneway');
-        setOutboundFlights(apiOutboundFlightData);
-        
-        // If round trip, also fetch return flights
-        if (tripType === 'roundtrip') {
-          const returnDate = localStorage.getItem('returnDate');
-          if (returnDate) {
-            const apiReturnFlightData = await fetchFlights(to, from, returnDate, undefined, 'oneway');
-            setReturnFlights(apiReturnFlightData);
-          }
-        }
-        
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching flights:', err);
-        setError('Failed to load flight data. Please try again.');
-        toast.error('Failed to load flights');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     getFlights();
   }, []);
+
+  const getFlights = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const from = localStorage.getItem('fromLocation') || 'LAX';
+      const to = localStorage.getItem('toLocation') || 'JFK';
+      const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
+      const tripType = localStorage.getItem('tripType') || 'oneway';
+      
+      console.log('Fetching outbound flights from:', from, 'to:', to, 'on:', departureDate);
+      
+      // Fetch outbound flights
+      const apiOutboundFlightData = await fetchFlights(from, to, departureDate, undefined, 'oneway');
+      console.log('Outbound flights received:', apiOutboundFlightData.length);
+      setOutboundFlights(apiOutboundFlightData);
+      
+      // If round trip, also fetch return flights
+      if (tripType === 'roundtrip') {
+        const returnDate = localStorage.getItem('returnDate');
+        if (returnDate) {
+          console.log('Fetching return flights from:', to, 'to:', from, 'on:', returnDate);
+          const apiReturnFlightData = await fetchFlights(to, from, returnDate, undefined, 'oneway');
+          console.log('Return flights received:', apiReturnFlightData.length);
+          setReturnFlights(apiReturnFlightData);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching flights:', err);
+      setError('Failed to load flight data. Please try again.');
+      toast.error('Failed to load flights');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFlightSelect = (flight: Flight, direction: 'outbound' | 'return') => {
     if (direction === 'outbound') {
@@ -133,10 +138,11 @@ const FlightsPage = () => {
   if (error) {
     return (
       <WebLayout title="Error" showBackButton>
-        <div className="flex flex-col items-center justify-center py-12">
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <div className="text-center">
             <p className="text-red-500 mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>
+            <Button onClick={() => getFlights()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
               Try Again
             </Button>
           </div>
@@ -272,109 +278,111 @@ const FlightsPage = () => {
   function renderFlightList(flights: Flight[], direction: 'outbound' | 'return') {
     const selectedFlight = direction === 'outbound' ? selectedOutboundFlight : selectedReturnFlight;
     
+    if (flights.length === 0) {
+      return (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <p className="text-gray-500 mb-4">No flights available for this route. Try another search.</p>
+            <Button onClick={() => navigate('/')}>
+              Back to Search
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+    
     return (
       <div className="space-y-4">
-        {flights.length > 0 ? (
-          flights.map((flight) => (
-            <Card 
-              key={flight.id} 
-              className={`hover:shadow-lg transition-all cursor-pointer border-2 ${
-                selectedFlight?.id === flight.id ? 'border-green-500' : 'border-transparent'
-              }`}
-              onClick={() => handleFlightSelect(flight, direction)}
-            >
-              <CardContent className="p-0">
-                <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
-                      <Plane className="text-blue-600" size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{flight.attribute}</h3>
-                      <p className="text-sm text-gray-500">
-                        {flight.details?.flightNumber}
-                      </p>
-                    </div>
+        {flights.map((flight) => (
+          <Card 
+            key={flight.id} 
+            className={`hover:shadow-lg transition-all cursor-pointer border-2 ${
+              selectedFlight?.id === flight.id ? 'border-green-500' : 'border-transparent'
+            }`}
+            onClick={() => handleFlightSelect(flight, direction)}
+          >
+            <CardContent className="p-0">
+              <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                    <Plane className="text-blue-600" size={24} />
                   </div>
-                  
-                  <div className="text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                      <span className="font-medium">{direction === 'outbound' ? from : to}</span>
-                      <div className="w-12 h-px bg-gray-300 relative">
-                        <div className="absolute w-2 h-2 bg-gray-300 rounded-full -top-[3px] -right-1"></div>
-                      </div>
-                      <span className="font-medium">{direction === 'outbound' ? to : from}</span>
-                    </div>
-                    <div className="flex items-center justify-center mt-1 text-sm text-gray-500">
-                      <Clock size={14} className="mr-1" />
-                      {flight.details ? formatDuration(flight.details.duration) : "5h 30m"}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-lg font-bold">${flight.price}</span>
-                      <p className="text-xs text-gray-500">per person</p>
-                    </div>
-                    <div>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant={selectedFlight?.id === flight.id ? "default" : "outline"}
-                              className={selectedFlight?.id === flight.id ? "bg-green-500 hover:bg-green-600" : ""}
-                            >
-                              {selectedFlight?.id === flight.id ? (
-                                <>
-                                  <Check size={16} className="mr-1" />
-                                  Selected
-                                </>
-                              ) : (
-                                "Select"
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {selectedFlight?.id === flight.id 
-                              ? "This flight is selected" 
-                              : "Click to select this flight"}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                  <div>
+                    <h3 className="font-medium">{flight.attribute}</h3>
+                    <p className="text-sm text-gray-500">
+                      {flight.details?.flightNumber}
+                    </p>
                   </div>
                 </div>
                 
-                {flight.details && (
-                  <div className="border-t px-4 md:px-6 py-3 bg-gray-50 flex flex-wrap gap-3">
-                    <Badge variant="outline" className="bg-white">
-                      <Clock size={14} className="mr-1" /> {new Date(flight.details.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </Badge>
-                    <Badge variant="outline" className="bg-white">
-                      {flight.details.cabin}
-                    </Badge>
-                    <Badge variant="outline" className="bg-white">
-                      {flight.details.stops === 0 ? 'Nonstop' : `${flight.details.stops} stop${flight.details.stops > 1 ? 's' : ''}`}
-                    </Badge>
-                    <Badge variant="outline" className="bg-white">
-                      <Info size={14} className="mr-1" /> Includes 1 carry-on bag
-                    </Badge>
+                <div className="text-center">
+                  <div className="flex items-center justify-center space-x-2">
+                    <span className="font-medium">{direction === 'outbound' ? from : to}</span>
+                    <div className="w-12 h-px bg-gray-300 relative">
+                      <div className="absolute w-2 h-2 bg-gray-300 rounded-full -top-[3px] -right-1"></div>
+                    </div>
+                    <span className="font-medium">{direction === 'outbound' ? to : from}</span>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <p className="text-gray-500 mb-4">No flights available for this route. Try another search.</p>
-              <Button onClick={() => navigate('/')}>
-                Back to Search
-              </Button>
+                  <div className="flex items-center justify-center mt-1 text-sm text-gray-500">
+                    <Clock size={14} className="mr-1" />
+                    {flight.details ? formatDuration(flight.details.duration) : "5h 30m"}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-lg font-bold">${flight.price}</span>
+                    <p className="text-xs text-gray-500">per person</p>
+                  </div>
+                  <div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant={selectedFlight?.id === flight.id ? "default" : "outline"}
+                            className={selectedFlight?.id === flight.id ? "bg-green-500 hover:bg-green-600" : ""}
+                          >
+                            {selectedFlight?.id === flight.id ? (
+                              <>
+                                <Check size={16} className="mr-1" />
+                                Selected
+                              </>
+                            ) : (
+                              "Select"
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {selectedFlight?.id === flight.id 
+                            ? "This flight is selected" 
+                            : "Click to select this flight"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </div>
+              </div>
+              
+              {flight.details && (
+                <div className="border-t px-4 md:px-6 py-3 bg-gray-50 flex flex-wrap gap-3">
+                  <Badge variant="outline" className="bg-white">
+                    <Clock size={14} className="mr-1" /> {new Date(flight.details.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </Badge>
+                  <Badge variant="outline" className="bg-white">
+                    {flight.details.cabin}
+                  </Badge>
+                  <Badge variant="outline" className="bg-white">
+                    {flight.details.stops === 0 ? 'Nonstop' : `${flight.details.stops} stop${flight.details.stops > 1 ? 's' : ''}`}
+                  </Badge>
+                  <Badge variant="outline" className="bg-white">
+                    <Info size={14} className="mr-1" /> Includes 1 carry-on bag
+                  </Badge>
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
+        ))}
       </div>
     );
   }
