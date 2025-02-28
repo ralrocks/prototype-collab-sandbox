@@ -36,6 +36,13 @@ export const fetchFlights = async (
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
   
   try {
+    // Check if we have a valid API key
+    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
+    if (!apiKey) {
+      console.log('No Perplexity API key found, using fallback data');
+      return generateFallbackFlights(from, to, departureDate);
+    }
+    
     // Format dates for better readability
     const formattedDepartureDate = formatDateForDisplay(departureDate);
     const formattedReturnDate = returnDate ? formatDateForDisplay(returnDate) : undefined;
@@ -67,20 +74,25 @@ export const fetchFlights = async (
     // Parse the JSON from the response
     const flightData = extractJsonFromResponse(content);
     
+    if (!Array.isArray(flightData) || flightData.length === 0) {
+      console.log('Invalid flight data received, using fallback');
+      return generateFallbackFlights(from, to, departureDate);
+    }
+    
     // Transform the data to match our Flight type
     return flightData.map((flight: any, index: number) => ({
       id: index + 1,
-      attribute: flight.airline,
+      attribute: flight.airline || 'Unknown Airline',
       question1: `${from} → ${to} (${new Date(flight.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(flight.arrivalTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`,
-      price: flight.price,
+      price: flight.price || Math.floor(200 + Math.random() * 300),
       tripType: tripType,
       details: {
-        flightNumber: flight.flightNumber,
-        duration: flight.duration,
-        departureTime: flight.departureTime,
-        arrivalTime: flight.arrivalTime,
-        cabin: flight.cabin,
-        stops: flight.stops
+        flightNumber: flight.flightNumber || `FL${1000 + index}`,
+        duration: flight.duration || 'PT3H00M',
+        departureTime: flight.departureTime || new Date().toISOString(),
+        arrivalTime: flight.arrivalTime || new Date().toISOString(),
+        cabin: flight.cabin || 'ECONOMY',
+        stops: flight.stops || 0
       }
     }));
   } catch (error) {
@@ -129,7 +141,7 @@ export const generateFallbackFlights = (
   // Generate basic fallback flights
   const fallbackFlights: Flight[] = [];
   
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 6; i++) {
     const airline = airlines[i % airlines.length];
     const price = 200 + Math.floor(Math.random() * 300);
     

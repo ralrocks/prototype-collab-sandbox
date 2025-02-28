@@ -1,129 +1,135 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { toast } from 'sonner';
-import { validatePerplexityApiKey } from '@/utils/validateApiKey';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { validatePerplexityApiKey, hasPerplexityApiKey, setCentralizedPerplexityApiKey, getPerplexityApiKey } from '@/utils/validateApiKey';
 
 interface PerplexityApiKeyFormProps {
-  adminMode?: boolean;
+  isAdminMode?: boolean;
+  onKeySubmitted?: () => void;
 }
 
-export function PerplexityApiKeyForm({ adminMode = false }: PerplexityApiKeyFormProps) {
+const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: PerplexityApiKeyFormProps) => {
   const [apiKey, setApiKey] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
-  
-  useEffect(() => {
-    // If in admin mode, we'll use a centralized key from this chat
-    if (adminMode) {
-      const centralKey = 'pk-admin-centralized-key';
-      setApiKey(centralKey);
-    } else {
-      // Otherwise load from localStorage for individual users
-      const savedKey = localStorage.getItem('PERPLEXITY_API_KEY') || '';
-      setApiKey(savedKey);
-    }
-  }, [adminMode]);
+  const [storedKey, setStoredKey] = useState<string | null>(null);
+  const [isValid, setIsValid] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    const key = getPerplexityApiKey();
+    setStoredKey(key);
+    
+    if (key) {
+      // If we have a stored key, we don't show the actual key but a placeholder
+      setApiKey(isAdminMode ? key : '••••••••••••••••••••••••••••••••');
+      setIsValid(true);
+    }
+  }, [isAdminMode]);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validatePerplexityApiKey(apiKey)) {
-      toast.error('Invalid API key format. Perplexity API keys start with "pk-"');
+    if (!apiKey) {
       return;
     }
     
-    setIsSaving(true);
-    setIsValidating(true);
-    
-    try {
-      // Test the API key with a simple request
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful assistant.'
-            },
-            {
-              role: 'user',
-              content: 'Test API key with a simple hello'
-            }
-          ],
-          max_tokens: 5,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`API validation failed: ${errorData.error?.message || response.statusText}`);
+    if (validatePerplexityApiKey(apiKey)) {
+      console.log('Setting API key in centralized mode:', isAdminMode);
+      if (isAdminMode || apiKey === 'pk-admin-centralized-key') {
+        const success = setCentralizedPerplexityApiKey(apiKey);
+        if (success) {
+          setStoredKey(apiKey);
+          setShowSuccess(true);
+          setTimeout(() => setShowSuccess(false), 3000);
+          if (onKeySubmitted) onKeySubmitted();
+        }
+      } else {
+        localStorage.setItem('PERPLEXITY_API_KEY', apiKey);
+        setStoredKey(apiKey);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+        if (onKeySubmitted) onKeySubmitted();
       }
-      
-      // Save to localStorage if validation successful
-      localStorage.setItem('PERPLEXITY_API_KEY', apiKey);
-      toast.success('API key validated and saved successfully');
-    } catch (error: any) {
-      console.error('Error validating API key:', error);
-      toast.error(error.message || 'Failed to validate API key');
-    } finally {
-      setIsSaving(false);
-      setIsValidating(false);
     }
   };
 
-  const setCentralizedApiKey = (key: string) => {
-    if (validatePerplexityApiKey(key)) {
-      localStorage.setItem('PERPLEXITY_API_KEY', key);
-      setApiKey(key);
-      toast.success('Centralized API key set successfully');
-    } else {
-      toast.error('Invalid API key format. Perplexity API keys start with "pk-"');
-    }
+  const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setApiKey(value);
+    setIsValid(validatePerplexityApiKey(value));
+  };
+
+  const clearApiKey = () => {
+    localStorage.removeItem('PERPLEXITY_API_KEY');
+    setApiKey('');
+    setStoredKey(null);
+    setIsValid(false);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="perplexity-api-key">Perplexity API Key</Label>
-        <Input
-          id="perplexity-api-key"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="pk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          className="font-mono"
-          disabled={adminMode}
-        />
-        <p className="text-sm text-gray-500">
-          {adminMode 
-            ? "Using centralized API key for all users." 
-            : "Your API key is stored locally in your browser and is never sent to our servers."}
-        </p>
-      </div>
-      {!adminMode && (
-        <Button type="submit" disabled={isSaving || isValidating}>
-          {isValidating ? 'Validating...' : isSaving ? 'Saving...' : 'Validate & Save API Key'}
-        </Button>
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
+        <div className="space-y-1">
+          <label htmlFor="apiKey" className="text-sm font-medium">
+            {isAdminMode ? "Set Centralized Perplexity API Key" : "Your Perplexity API Key"}
+          </label>
+          <div className="text-xs text-muted-foreground mb-2">
+            {isAdminMode ? 
+              "As an admin, you can set a centralized API key that all users will use. This eliminates the need for each user to input their own key." :
+              "Enter your API key to enable AI-powered search features"
+            }
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1">
+            <Input
+              id="apiKey"
+              value={apiKey}
+              onChange={handleKeyChange}
+              placeholder={isAdminMode ? "Enter centralized API key" : "Enter your API key"}
+              className={`pr-8 ${isValid ? 'border-green-500' : apiKey ? 'border-red-500' : ''}`}
+              type={isAdminMode ? "text" : (storedKey ? "password" : "text")}
+            />
+            {apiKey && (
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                {isValid ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                )}
+              </div>
+            )}
+          </div>
+          
+          <Button type="submit" disabled={!isValid}>
+            {storedKey ? "Update" : "Save"}
+          </Button>
+          
+          {storedKey && (
+            <Button type="button" variant="outline" onClick={clearApiKey}>
+              Clear
+            </Button>
+          )}
+        </div>
+      </form>
+      
+      {showSuccess && (
+        <div className="bg-green-100 text-green-800 p-2 rounded-md flex items-center">
+          <CheckCircle2 className="h-4 w-4 mr-2" />
+          <span className="text-sm">API key {storedKey ? "updated" : "saved"} successfully!</span>
+        </div>
       )}
-    </form>
+      
+      {isAdminMode && storedKey && (
+        <div className="text-xs text-muted-foreground mt-2">
+          <p>Current centralized key: {storedKey.substring(0, 5)}...{storedKey.substring(storedKey.length - 5)}</p>
+          <p className="mt-1">All users will use this key for AI functionality.</p>
+        </div>
+      )}
+    </div>
   );
-}
-
-// This function can be called from the chat to set a centralized API key
-export const setPerplexityApiKey = (key: string) => {
-  if (validatePerplexityApiKey(key)) {
-    localStorage.setItem('PERPLEXITY_API_KEY', key);
-    toast.success('Centralized API key set successfully');
-    return true;
-  } else {
-    console.error('Invalid API key format. Perplexity API keys start with "pk-"');
-    return false;
-  }
 };
+
+export default PerplexityApiKeyForm;

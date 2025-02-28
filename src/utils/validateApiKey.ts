@@ -30,9 +30,18 @@ export const hasPerplexityApiKey = (): boolean => {
  * @returns Whether the key was successfully set
  */
 export const setCentralizedPerplexityApiKey = (apiKey: string): boolean => {
+  console.log('Setting centralized API key:', apiKey);
   if (validatePerplexityApiKey(apiKey)) {
     localStorage.setItem('PERPLEXITY_API_KEY', apiKey);
     return true;
   }
   return false;
+};
+
+/**
+ * Gets the currently stored Perplexity API key
+ * @returns The stored API key or null if not found
+ */
+export const getPerplexityApiKey = (): string | null => {
+  return localStorage.getItem('PERPLEXITY_API_KEY');
 };

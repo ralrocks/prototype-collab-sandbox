@@ -40,7 +40,7 @@ const FlightCard = ({
             <div>
               <h3 className="font-medium">{flight.attribute}</h3>
               <p className="text-sm text-gray-500">
-                {flight.details?.flightNumber}
+                {flight.details?.flightNumber || "Flight number unavailable"}
               </p>
             </div>
           </div>
@@ -55,7 +55,7 @@ const FlightCard = ({
             </div>
             <div className="flex items-center justify-center mt-1 text-sm text-gray-500">
               <Clock size={14} className="mr-1" />
-              {flight.details ? formatDuration(flight.details.duration) : "5h 30m"}
+              {flight.details ? formatDuration(flight.details.duration) : "Duration unavailable"}
             </div>
           </div>
           
@@ -100,7 +100,7 @@ const FlightCard = ({
               <Clock size={14} className="mr-1" /> {new Date(flight.details.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
             </Badge>
             <Badge variant="outline" className="bg-white">
-              {flight.details.cabin}
+              {flight.details.cabin || "ECONOMY"}
             </Badge>
             <Badge variant="outline" className="bg-white">
               {flight.details.stops === 0 ? 'Nonstop' : `${flight.details.stops} stop${flight.details.stops > 1 ? 's' : ''}`}
@@ -117,10 +117,15 @@ const FlightCard = ({
 
 // Format duration utility function
 const formatDuration = (duration: string) => {
-  // Simple PT5H30M format parser
-  const hours = duration.match(/(\d+)H/)?.[1] || '0';
-  const minutes = duration.match(/(\d+)M/)?.[1] || '0';
-  return `${hours}h ${minutes}m`;
+  try {
+    // Simple PT5H30M format parser
+    const hours = duration.match(/(\d+)H/)?.[1] || '0';
+    const minutes = duration.match(/(\d+)M/)?.[1] || '0';
+    return `${hours}h ${minutes}m`;
+  } catch (error) {
+    console.error('Error formatting duration:', error);
+    return 'Duration unavailable';
+  }
 };
 
 export default FlightCard;
