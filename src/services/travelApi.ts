@@ -125,8 +125,6 @@ const getAmadeusToken = async (): Promise<string> => {
 
   console.log('Getting new Amadeus token');
   
-  // For development purposes, we're using a mock implementation
-  // In production, you would use your API key and secret
   try {
     // Simulate API token response
     // In production: 
@@ -180,18 +178,6 @@ export const fetchFlights = async (
     // In production implementation, get the token and use it to fetch flights
     const token = await getAmadeusToken();
     
-    // In production:
-    // const url = `https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=${from}&destinationLocationCode=${to}&departureDate=${departureDate}&adults=1&nonStop=true&max=10`;
-    // if (tripType === 'roundtrip' && returnDate) {
-    //   url += `&returnDate=${returnDate}`;
-    // }
-    // const response = await fetch(url, {
-    //   headers: {
-    //     'Authorization': `Bearer ${token}`
-    //   }
-    // });
-    // const data: AmadeusFlightResponse = await response.json();
-    
     // For development purposes, we'll use a mock response
     await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
     
@@ -201,24 +187,25 @@ export const fetchFlights = async (
       const carrierCode = randomCarrierKeys[Math.floor(Math.random() * randomCarrierKeys.length)];
       const price = 150 + Math.floor(Math.random() * 400);
       
-      // Get today's date
+      // Create dates for departure and arrival that are safe to use
       const today = new Date();
-      // Add 10-15 days for departure date
-      const depDate = new Date(today);
+      const depDate = new Date();
       depDate.setDate(today.getDate() + 10 + Math.floor(Math.random() * 5));
-      // Format dates in ISO format
-      const depDateTime = new Date(
-        depDate.getFullYear(),
-        depDate.getMonth(),
-        depDate.getDate(),
-        10 + Math.floor(Math.random() * 8), // Hours between 10 AM and 6 PM
-        Math.floor(Math.random() * 60) // Random minutes
-      ).toISOString();
+      depDate.setHours(10 + Math.floor(Math.random() * 8));
+      depDate.setMinutes(Math.floor(Math.random() * 60));
+      
+      // Format date as an ISO string
+      const depDateTime = depDate.toISOString();
       
       // Calculate arrival time (3-6 hours after departure)
-      const arrDate = new Date(depDateTime);
+      const arrDate = new Date(depDate);
       arrDate.setHours(arrDate.getHours() + 3 + Math.floor(Math.random() * 3));
       const arrDateTime = arrDate.toISOString();
+      
+      // Create a valid lastTicketingDate
+      const ticketingDate = new Date(today);
+      ticketingDate.setDate(today.getDate() + 5);
+      const lastTicketingDate = ticketingDate.toISOString().split('T')[0];
       
       return {
         id: `${index + 1}`,
@@ -226,7 +213,7 @@ export const fetchFlights = async (
         instantTicketingRequired: false,
         nonHomogeneous: false,
         oneWay: tripType === 'oneway',
-        lastTicketingDate: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5).toISOString().split('T')[0],
+        lastTicketingDate: lastTicketingDate,
         numberOfBookableSeats: 9,
         itineraries: [
           {
@@ -327,20 +314,21 @@ export const transformFlightData = (apiResponse: AmadeusFlightResponse, tripType
       const departure = segment.departure.iataCode;
       const arrival = segment.arrival.iataCode;
       
-      // Parse departure and arrival times safely
-      let departureTime: Date;
-      let arrivalTime: Date;
+      // Parse dates safely
+      let departureTime: Date | null = null;
+      let arrivalTime: Date | null = null;
       
       try {
         departureTime = new Date(segment.departure.at);
         arrivalTime = new Date(segment.arrival.at);
         
-        // Validate dates are legitimate (will throw if invalid)
-        departureTime.toISOString();
-        arrivalTime.toISOString();
+        // Check if dates are valid
+        if (isNaN(departureTime.getTime()) || isNaN(arrivalTime.getTime())) {
+          throw new Error('Invalid date');
+        }
       } catch (error) {
-        console.error('Invalid date format in flight data:', error);
-        // Fallback to current date/time plus some hours if date is invalid
+        console.error('Invalid date in flight data:', error);
+        // Use current time plus offsets as fallback
         const now = new Date();
         departureTime = new Date(now.getTime() + 3600000); // +1 hour
         arrivalTime = new Date(now.getTime() + 7200000);   // +2 hours
@@ -354,6 +342,10 @@ export const transformFlightData = (apiResponse: AmadeusFlightResponse, tripType
       // Calculate price from the API response
       const price = parseInt(flight.price.total);
       
+      // Ensure we have valid ISO strings for dates
+      const departureDateISOString = departureTime.toISOString();
+      const arrivalDateISOString = arrivalTime.toISOString();
+      
       return {
         id: parseInt(flight.id),
         attribute: airlineName,
@@ -364,8 +356,8 @@ export const transformFlightData = (apiResponse: AmadeusFlightResponse, tripType
         details: {
           flightNumber: `${carrierCode}${segment.number}`,
           duration: flight.itineraries[0].duration,
-          departureTime: departureTime.toISOString(),
-          arrivalTime: arrivalTime.toISOString(),
+          departureTime: departureDateISOString,
+          arrivalTime: arrivalDateISOString,
           cabin: flight.travelerPricings[0].fareDetailsBySegment[0].cabin,
           stops: segment.numberOfStops
         }

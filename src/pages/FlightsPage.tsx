@@ -35,10 +35,13 @@ const FlightsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'price' | 'time'>('price');
   const [activeTab, setActiveTab] = useState<'outbound' | 'return'>('outbound');
+  const [isDataFetched, setIsDataFetched] = useState(false);
 
   useEffect(() => {
-    getFlights();
-  }, []);
+    if (!isDataFetched) {
+      getFlights();
+    }
+  }, [isDataFetched]);
 
   const getFlights = async () => {
     try {
@@ -67,6 +70,8 @@ const FlightsPage = () => {
           setReturnFlights(apiReturnFlightData);
         }
       }
+      
+      setIsDataFetched(true);
     } catch (err) {
       console.error('Error fetching flights:', err);
       setError('Failed to load flight data. Please try again.');
@@ -141,7 +146,10 @@ const FlightsPage = () => {
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <div className="text-center">
             <p className="text-red-500 mb-4">{error}</p>
-            <Button onClick={() => getFlights()}>
+            <Button onClick={() => {
+              setIsDataFetched(false);
+              getFlights();
+            }}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Try Again
             </Button>
