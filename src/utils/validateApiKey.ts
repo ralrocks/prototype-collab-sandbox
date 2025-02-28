@@ -10,8 +10,8 @@ export const validatePerplexityApiKey = (apiKey: string): boolean => {
     return true;
   }
   
-  // Perplexity API keys start with 'pk-' followed by a long string
-  const isValid = /^pk-[A-Za-z0-9]{32,}$/.test(apiKey);
+  // Perplexity API keys start with 'pplx-' or 'pk-' followed by a long string
+  const isValid = /^(pk-|pplx-)[A-Za-z0-9]{24,}$/.test(apiKey);
   return isValid;
 };
 

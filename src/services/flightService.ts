@@ -40,7 +40,7 @@ export const fetchFlights = async (
     const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
     if (!apiKey) {
       console.log('No Perplexity API key found, using fallback data');
-      return generateFallbackFlights(from, to, departureDate);
+      throw new Error('Perplexity API key not found. Please add your API key in settings.');
     }
     
     // Format dates for better readability
@@ -97,8 +97,8 @@ export const fetchFlights = async (
     }));
   } catch (error) {
     console.error('Error fetching flight data:', error);
-    // Return a minimal set of fallback flights if the API fails
-    return generateFallbackFlights(from, to, departureDate);
+    // Re-throw the error for proper error handling
+    throw error;
   }
 };
 

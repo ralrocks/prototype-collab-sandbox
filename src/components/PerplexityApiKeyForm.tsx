@@ -67,6 +67,22 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
     setIsValid(false);
   };
 
+  // Automatically set the provided key if this is in admin mode and we don't have a key yet
+  useEffect(() => {
+    if (isAdminMode && !storedKey) {
+      // Set the key automatically if on first load
+      const keyToSet = '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';
+      if (validatePerplexityApiKey(keyToSet)) {
+        setApiKey(keyToSet);
+        setIsValid(true);
+        setCentralizedPerplexityApiKey(keyToSet);
+        setStoredKey(keyToSet);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      }
+    }
+  }, [isAdminMode, storedKey]);
+
   return (
     <div className="space-y-4">
       <form onSubmit={handleSubmit} className="flex flex-col space-y-2">

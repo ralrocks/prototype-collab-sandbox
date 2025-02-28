@@ -31,37 +31,51 @@ export const makePerplexityRequest = async (
 ): Promise<string> => {
   const apiKey = getPerplexityApiKey();
   
-  const response = await fetch(PERPLEXITY_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'llama-3.1-sonar-small-128k-online',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt
-        },
-        {
-          role: 'user',
-          content: userPrompt
+  try {
+    const response = await fetch(PERPLEXITY_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ],
+        temperature,
+        max_tokens: maxTokens,
+      }),
+    });
+    
+    if (!response.ok) {
+      let errorMessage = `API error: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        console.error('Perplexity API error:', errorData);
+        if (errorData.error && errorData.error.message) {
+          errorMessage = errorData.error.message;
         }
-      ],
-      temperature,
-      max_tokens: maxTokens,
-    }),
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error('Perplexity API error:', errorData);
-    throw new Error(`API error: ${response.status}`);
+      } catch (e) {
+        console.error('Could not parse error response', e);
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('Error in Perplexity API request:', error);
+    throw error;
   }
-  
-  const data = await response.json();
-  return data.choices[0].message.content;
 };
 
 /**
@@ -69,10 +83,23 @@ export const makePerplexityRequest = async (
  */
 export const extractJsonFromResponse = (content: string): any => {
   try {
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    // First try to parse the entire content as JSON
+    try {
+      return JSON.parse(content);
+    } catch (e) {
+      // If that fails, look for JSON array pattern
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      
+      // If that also fails, look for JSON object pattern
+      const jsonObjectMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonObjectMatch) {
+        return JSON.parse(jsonObjectMatch[0]);
+      }
     }
+    
     throw new Error('No valid JSON found in response');
   } catch (parseError) {
     console.error('Error parsing JSON from Perplexity:', parseError, content);
