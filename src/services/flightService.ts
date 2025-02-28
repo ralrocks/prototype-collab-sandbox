@@ -1,3 +1,4 @@
+
 import { Flight } from '@/types';
 import { makePerplexityRequest, extractJsonFromResponse } from './api/perplexityClient';
 
@@ -34,66 +35,59 @@ export const fetchFlights = async (
 ): Promise<Flight[]> => {
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}`);
 
-  // Return fallback data immediately for better user experience
+  // Get fallback data immediately for better user experience
   const fallbackData = generateFallbackFlights(from, to, departureDate);
   
-  // Try to fetch real data in the background, but don't wait for it
   try {
-    // Set a very short timeout for flight search - 4 seconds
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        console.log('Flight search taking too long, using fallback data');
-        reject(new Error('Flight search timed out'));
-      }, 4000);
-    });
+    // Very specific prompt to get structured flight data
+    const systemPrompt = `You are a flight search API that returns ONLY a JSON array of flights with no explanation or extra text.`;
     
-    // Extremely specific prompt to get exactly what we need in a structured format
-    const systemPrompt = `You are a flight search API that returns ONLY a JSON array of 4-5 flights with no explanation or extra text. Just the JSON array.`;
-    
-    const userPrompt = `Return a JSON array of flights from ${from} to ${to} on ${departureDate}. Each flight must have this exact structure:
+    const userPrompt = `Return a JSON array of exactly 5 flights from ${from} to ${to} on ${departureDate}. Each flight must have:
     {
-      "id": (number),
+      "id": (unique number),
       "airline": "(airline name)",
-      "price": (number),
+      "price": (realistic price in USD),
       "route": "${from} to ${to}"
     }
-    IMPORTANT: Return ONLY the JSON array with no additional text or explanation.`;
+    Return ONLY the JSON array with no other text or explanation.`;
     
-    // Make the API request with a timeout
-    const responsePromise = makePerplexityRequest(systemPrompt, userPrompt, 0.1, 1000);
-    
-    // Race the API request against the timeout
-    const response = await Promise.race([responsePromise, timeoutPromise])
-      .catch(error => {
-        console.error('Error or timeout in flight search:', error);
-        throw error;
-      });
-    
-    if (!response) {
-      throw new Error('No response from Perplexity API');
-    }
+    // Make the API request
+    const response = await Promise.race([
+      makePerplexityRequest(systemPrompt, userPrompt, 0.1, 1000),
+      new Promise<never>((_, reject) => setTimeout(() => {
+        console.log('Flight search taking too long, using fallback data');
+        reject(new Error('Flight search timed out'));
+      }, 4000))
+    ]);
     
     // Extract JSON from the response
     const flightData = extractJsonFromResponse(response);
     
     if (!Array.isArray(flightData)) {
       console.error('Perplexity returned non-array data:', flightData);
-      throw new Error('Invalid data format received from API');
+      return fallbackData;
     }
     
     // Validate and normalize the flight data
     const normalizedFlights: Flight[] = flightData.map((flight: any, index: number) => {
+      // Generate timeframes
+      const departureTime = new Date();
+      departureTime.setHours(8 + index * 3);
+      
+      const arrivalTime = new Date(departureTime);
+      arrivalTime.setHours(arrivalTime.getHours() + 3);
+      
       return {
         id: flight.id || index + 1,
-        attribute: flight.airline || flight.attribute || 'Unknown Airline',
-        question1: flight.route || flight.question1 || `${from} → ${to}`,
+        attribute: flight.airline || 'Unknown Airline',
+        question1: flight.route || `${from} → ${to}`,
         price: typeof flight.price === 'number' ? flight.price : 200 + Math.floor(Math.random() * 300),
         tripType: 'oneway',
-        details: flight.details || {
+        details: {
           flightNumber: `${(flight.airline || 'FL').substring(0, 2).toUpperCase()}${1000 + index}`,
           duration: 'PT3H00M',
-          departureTime: new Date().toISOString(),
-          arrivalTime: new Date().toISOString(),
+          departureTime: departureTime.toISOString(),
+          arrivalTime: arrivalTime.toISOString(),
           cabin: 'ECONOMY',
           stops: 0
         }
@@ -102,18 +96,14 @@ export const fetchFlights = async (
     
     console.log(`Successfully processed ${normalizedFlights.length} flights from Perplexity API`);
     
-    // If we got real data, replace the fallback
     if (normalizedFlights.length > 0) {
       return normalizedFlights;
     }
     
     return fallbackData;
-    
   } catch (error) {
     console.error('Error fetching flights from Perplexity:', error);
     console.log('Using pre-generated fallback flight data');
-    
-    // Return fallback flights if API call fails
     return fallbackData;
   }
 };
