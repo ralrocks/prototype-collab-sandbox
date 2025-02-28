@@ -10,11 +10,13 @@ import { toast } from 'sonner';
 export const makePerplexityRequest = async (
   systemPrompt: string, 
   userPrompt: string,
-  apiKey: string | null,
   temperature: number = 0.2,
   maxTokens: number = 2000,
   model: string = 'llama-3.1-sonar-small-128k-online'
 ): Promise<string> => {
+  // Check if API key exists
+  const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
+  
   if (!apiKey) {
     console.error('Perplexity API key not found');
     toast.error('API key not configured. Please add it in settings.');
