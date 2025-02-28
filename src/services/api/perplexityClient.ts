@@ -18,6 +18,8 @@ export const makePerplexityRequest = async (
   const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
   
   if (!apiKey) {
+    console.error('Perplexity API key not found in localStorage');
+    toast.error('API key not found. Please add your API key in settings.');
     throw new Error('Perplexity API key not found. Please add your API key in settings.');
   }
   
@@ -48,8 +50,14 @@ export const makePerplexityRequest = async (
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({}));
       console.error('Perplexity API error:', errorData);
+      
+      if (response.status === 401) {
+        toast.error('Invalid API key. Please update your API key in settings.');
+        throw new Error('Invalid API key');
+      }
+      
       throw new Error(`API request failed: ${errorData.error?.message || response.statusText}`);
     }
     
@@ -105,6 +113,8 @@ export const makeOpenAICompatibleRequest = async (
   const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
   
   if (!apiKey) {
+    console.error('Perplexity API key not found in localStorage');
+    toast.error('API key not found. Please add your API key in settings.');
     throw new Error('Perplexity API key not found. Please add your API key in settings.');
   }
   
@@ -135,8 +145,14 @@ export const makeOpenAICompatibleRequest = async (
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({}));
       console.error('Perplexity API error:', errorData);
+      
+      if (response.status === 401) {
+        toast.error('Invalid API key. Please update your API key in settings.');
+        throw new Error('Invalid API key');
+      }
+      
       throw new Error(`API request failed: ${errorData.error?.message || response.statusText}`);
     }
     

@@ -16,8 +16,10 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
   const [isValid, setIsValid] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Initialize the form with the existing API key if available
   useEffect(() => {
-    // Initialize the form with the existing API key if available
+    console.log('PerplexityApiKeyForm: useEffect triggered, apiKey:', perplexityApiKey ? '[EXISTS]' : '[NONE]');
+    
     if (perplexityApiKey) {
       // If we have a stored key, mask it with asterisks for security if not in admin mode
       setApiKey(isAdminMode ? perplexityApiKey : '••••••••••••••••••••••••••••••••');
@@ -60,6 +62,7 @@ const PerplexityApiKeyForm = ({ isAdminMode = false, onKeySubmitted }: Perplexit
   useEffect(() => {
     if (isAdminMode && !perplexityApiKey) {
       // Set the key automatically on first load
+      console.log('Admin mode detected and no existing key, setting default key');
       const keyToSet = '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';
       if (isValidPerplexityApiKey(keyToSet)) {
         setApiKey(keyToSet);

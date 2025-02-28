@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiKey } from '@/contexts/ApiKeyContext';
 import WebLayout from '@/components/WebLayout';
@@ -15,9 +15,17 @@ import { Switch } from '@/components/ui/switch';
 
 const SettingsPage = () => {
   const { user, profile, signOut, updateProfile } = useAuth();
+  const { hasPerplexityApiKey } = useApiKey();
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [isUpdating, setIsUpdating] = useState(false);
   const [useCentralizedKey, setUseCentralizedKey] = useState(true);
+  
+  // Update fullName when profile changes
+  useEffect(() => {
+    if (profile?.full_name) {
+      setFullName(profile.full_name);
+    }
+  }, [profile]);
   
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();

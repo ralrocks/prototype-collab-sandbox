@@ -21,13 +21,17 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
   
   // Load key from localStorage on mount
   useEffect(() => {
-    const savedKey = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedKey) {
-      setPerplexityApiKey(savedKey);
-      console.log('Loaded Perplexity API key from localStorage');
-    } else {
-      console.log('No Perplexity API key found in localStorage');
-      setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
+    try {
+      const savedKey = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedKey) {
+        setPerplexityApiKey(savedKey);
+        console.log('Loaded Perplexity API key from localStorage');
+      } else {
+        console.log('No Perplexity API key found in localStorage');
+        setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
+      }
+    } catch (error) {
+      console.error('Error loading API key from localStorage:', error);
     }
   }, []);
   
@@ -40,30 +44,41 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
   
   // Store API key in localStorage and state
   const storePerplexityApiKey = (key: string): boolean => {
-    const trimmedKey = key.trim();
-    
-    if (isValidPerplexityApiKey(trimmedKey)) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, trimmedKey);
-      setPerplexityApiKey(trimmedKey);
-      setApiKeyError(null);
-      console.log('Valid Perplexity API key saved');
-      toast.success('API key successfully saved');
-      return true;
-    } else {
-      console.error('Invalid Perplexity API key format:', trimmedKey);
-      setApiKeyError('Invalid API key format. Perplexity API keys start with "pplx-" or "pk-"');
-      toast.error('Invalid API key format');
+    try {
+      const trimmedKey = key.trim();
+      
+      if (isValidPerplexityApiKey(trimmedKey)) {
+        localStorage.setItem(LOCAL_STORAGE_KEY, trimmedKey);
+        setPerplexityApiKey(trimmedKey);
+        setApiKeyError(null);
+        console.log('Valid Perplexity API key saved');
+        toast.success('API key successfully saved');
+        return true;
+      } else {
+        console.error('Invalid Perplexity API key format:', trimmedKey);
+        setApiKeyError('Invalid API key format. Perplexity API keys start with "pplx-" or "pk-"');
+        toast.error('Invalid API key format');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error storing API key:', error);
+      toast.error('Failed to save API key');
       return false;
     }
   };
   
   // Remove API key from localStorage and state
   const removePerplexityApiKey = () => {
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    setPerplexityApiKey(null);
-    setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
-    console.log('Perplexity API key removed');
-    toast.info('API key removed');
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      setPerplexityApiKey(null);
+      setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
+      console.log('Perplexity API key removed');
+      toast.info('API key removed');
+    } catch (error) {
+      console.error('Error removing API key:', error);
+      toast.error('Failed to remove API key');
+    }
   };
   
   const value = {
