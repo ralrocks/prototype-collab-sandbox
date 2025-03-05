@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2, Filter } from 'lucide-react';
+import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2, Filter, ArrowLeft } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface HousingOption {
   id: number;
@@ -28,7 +29,15 @@ interface HousingOption {
 
 const AccommodationsPage = () => {
   const navigate = useNavigate();
-  const { selectedOutboundFlight, selectedHousing, setSelectedHousing } = useBookingStore();
+  const { 
+    selectedOutboundFlight, 
+    selectedReturnFlight,
+    selectedHousing, 
+    setSelectedHousing,
+    isRoundTrip,
+    skipHotels
+  } = useBookingStore();
+  
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +54,12 @@ const AccommodationsPage = () => {
   ];
 
   useEffect(() => {
+    // Redirect if hotels should be skipped
+    if (skipHotels) {
+      navigate('/checkout');
+      return;
+    }
+    
     // Redirect if no flight is selected
     if (!selectedOutboundFlight) {
       toast.error("Please select a flight first");
@@ -56,25 +71,19 @@ const AccommodationsPage = () => {
       try {
         setLoading(true);
         const to = localStorage.getItem('toLocation') || 'JFK';
+        const toName = localStorage.getItem('toLocationName') || 'New York';
         const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
         
-        // Calculate a return date (5 days after departure)
-        const departureObj = new Date(departureDate);
-        const returnObj = new Date(departureObj);
-        returnObj.setDate(departureObj.getDate() + 5);
-        const returnDate = returnObj.toISOString().split('T')[0];
-        
-        // Get destination city name based on airport code
-        const cityMap: Record<string, string> = {
-          'JFK': 'New York',
-          'LAX': 'Los Angeles',
-          'MIA': 'Miami',
-          'ORD': 'Chicago',
-          'SFO': 'San Francisco',
-          // Add more mappings as needed
-        };
-        
-        const city = cityMap[to] || 'New York';
+        // Calculate a return date based on user selection or default to 5 days
+        let returnDate;
+        if (isRoundTrip && localStorage.getItem('returnDate')) {
+          returnDate = localStorage.getItem('returnDate');
+        } else {
+          const departureObj = new Date(departureDate);
+          const returnObj = new Date(departureObj);
+          returnObj.setDate(departureObj.getDate() + 5);
+          returnDate = returnObj.toISOString().split('T')[0];
+        }
         
         // Define filters
         const filters = {
@@ -84,7 +93,7 @@ const AccommodationsPage = () => {
           amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined
         };
         
-        const hotelData = await fetchHotels(city, departureDate, returnDate, filters);
+        const hotelData = await fetchHotels(toName, departureDate, returnDate || '', filters);
         setHotels(hotelData);
         setFilteredHotels(hotelData);
         setError(null);
@@ -98,7 +107,7 @@ const AccommodationsPage = () => {
     };
     
     fetchHotelData();
-  }, [selectedOutboundFlight, navigate, priceRange, minRating, selectedAmenities]);
+  }, [selectedOutboundFlight, navigate, priceRange, minRating, selectedAmenities, isRoundTrip, skipHotels]);
 
   // Convert Hotel objects to HousingOption format for compatibility with existing bookingStore
   const convertToHousingOption = (hotel: Hotel): HousingOption => {
@@ -137,6 +146,11 @@ const AccommodationsPage = () => {
     navigate('/checkout');
   };
 
+  const handleSkipHotels = () => {
+    setSelectedHousing([]);
+    navigate('/checkout');
+  };
+
   const handleAmenityToggle = (amenity: string) => {
     setSelectedAmenities(prev => 
       prev.includes(amenity)
@@ -159,7 +173,7 @@ const AccommodationsPage = () => {
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 size={48} className="animate-spin text-primary mb-4" />
           <p className="text-center text-gray-600">
-            Searching for the best accommodations...
+            Searching for the best accommodations in your destination...
           </p>
         </div>
       </WebLayout>
@@ -246,6 +260,13 @@ const AccommodationsPage = () => {
               </PopoverContent>
             </Popover>
           </div>
+          
+          <Alert className="mb-4">
+            <AlertTitle>Hotel accommodation is optional</AlertTitle>
+            <AlertDescription>
+              You can select one or more hotels, or skip this step entirely if you have other accommodation arrangements.
+            </AlertDescription>
+          </Alert>
           
           <p className="text-gray-600 mb-4">
             Choose where you'll stay during your trip. You can select multiple options.
@@ -336,22 +357,32 @@ const AccommodationsPage = () => {
         </div>
         
         <div className="flex justify-between items-center">
-          <div>
-            {selectedHousing.length > 0 && (
-              <p className="text-gray-600">
-                Selected {selectedHousing.length} accommodation{selectedHousing.length !== 1 ? 's' : ''}
-              </p>
-            )}
-          </div>
-          
           <Button
-            onClick={handleContinue}
-            className="px-6"
-            disabled={selectedHousing.length === 0}
+            variant="outline"
+            onClick={() => navigate('/flights')}
+            className="flex items-center"
           >
-            Continue to Checkout
-            <ArrowRight size={16} className="ml-2" />
+            <ArrowLeft size={16} className="mr-2" />
+            Back to Flights
           </Button>
+          
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSkipHotels}
+            >
+              Skip and Continue to Checkout
+            </Button>
+            
+            <Button
+              onClick={handleContinue}
+              className="px-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+              disabled={selectedHousing.length === 0}
+            >
+              Continue to Checkout
+              <ArrowRight size={16} className="ml-2" />
+            </Button>
+          </div>
         </div>
       </div>
     </WebLayout>

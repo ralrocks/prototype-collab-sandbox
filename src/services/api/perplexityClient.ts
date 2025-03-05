@@ -18,11 +18,15 @@ export const makePerplexityRequest = async (
   const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
   
   if (!apiKey) {
+    toast.error('API key required', { description: 'Please add your Perplexity API key in settings' });
     throw new Error('Perplexity API key not found. Please add your API key in settings.');
   }
   
   try {
     console.log(`Making Perplexity API request with model: ${model}`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -45,21 +49,39 @@ export const makePerplexityRequest = async (
         temperature,
         max_tokens: maxTokens,
       }),
+      signal: controller.signal
     });
     
+    clearTimeout(timeoutId);
+    
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }));
       console.error('Perplexity API error:', errorData);
-      throw new Error(`API request failed: ${errorData.error?.message || response.statusText}`);
+      
+      if (response.status === 401) {
+        toast.error('API key invalid', { description: 'Please check your Perplexity API key in settings' });
+        throw new Error('Invalid API key');
+      } else if (response.status === 429) {
+        toast.error('Rate limit exceeded', { description: 'Please try again in a few minutes' });
+        throw new Error('Rate limit exceeded');
+      } else {
+        toast.error('API request failed', { description: errorData.error?.message || response.statusText });
+        throw new Error(`API request failed: ${errorData.error?.message || response.statusText}`);
+      }
     }
     
     const data = await response.json();
     if (data.choices && data.choices.length > 0) {
       return data.choices[0].message.content;
     } else {
+      toast.error('No content returned from API');
       throw new Error('No content returned from API');
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      toast.error('Request timed out', { description: 'The API request took too long to respond' });
+      throw new Error('API request timed out');
+    }
     console.error('Error making Perplexity request:', error);
     throw error;
   }
@@ -73,81 +95,30 @@ export const extractJsonFromResponse = (text: string): any => {
     // Try to parse the entire text as JSON first
     return JSON.parse(text);
   } catch (error) {
-    // If not valid JSON, try to extract JSON portion using regex
+    console.log('Couldn\'t parse entire response as JSON, trying to extract JSON portion');
+    
     try {
-      const jsonMatch = text.match(/\[\s*\{.*\}\s*\]/s) || 
-                        text.match(/\{\s*".*"\s*:.*\}/s);
-      
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+      // Try to extract JSON array
+      const jsonArrayMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (jsonArrayMatch) {
+        return JSON.parse(jsonArrayMatch[0]);
       }
+      
+      // Try to extract JSON object
+      const jsonObjectMatch = text.match(/\{\s*"[\s\S]*"\s*:[\s\S]*\}/);
+      if (jsonObjectMatch) {
+        return JSON.parse(jsonObjectMatch[0]);
+      }
+      
+      // If we can't find valid JSON, log the response and throw an error
+      console.error('Could not extract valid JSON from response:', text);
+      toast.error('Invalid response format from API');
+      throw new Error('Could not extract valid JSON from API response');
     } catch (extractError) {
       console.error('Error extracting JSON from response:', extractError);
+      console.error('Original response:', text);
+      toast.error('Error parsing API response');
+      throw new Error('Could not parse API response');
     }
-    
-    // If all else fails, log the issue and throw an error
-    console.error('Could not extract valid JSON from API response:', text);
-    throw new Error('Could not extract valid JSON from API response');
-  }
-};
-
-/**
- * Alternative client using OpenAI compatibility mode
- */
-export const makeOpenAICompatibleRequest = async (
-  systemPrompt: string,
-  userPrompt: string,
-  temperature: number = 0.2,
-  maxTokens: number = 2000,
-  model: string = 'sonar-small-online'
-): Promise<string> => {
-  // Fetch API key from localStorage
-  const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
-  
-  if (!apiKey) {
-    throw new Error('Perplexity API key not found. Please add your API key in settings.');
-  }
-  
-  try {
-    console.log(`Making Perplexity OpenAI compatible request with model: ${model}`);
-    
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        temperature,
-        max_tokens: maxTokens,
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Perplexity API error:', errorData);
-      throw new Error(`API request failed: ${errorData.error?.message || response.statusText}`);
-    }
-    
-    const data = await response.json();
-    if (data.choices && data.choices.length > 0) {
-      return data.choices[0].message.content;
-    } else {
-      throw new Error('No content returned from API');
-    }
-  } catch (error) {
-    console.error('Error making Perplexity OpenAI compatible request:', error);
-    throw error;
   }
 };

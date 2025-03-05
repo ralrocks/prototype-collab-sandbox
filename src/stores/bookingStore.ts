@@ -14,12 +14,14 @@ interface BookingState {
   selectedReturnFlight: Flight | null;
   selectedHousing: Housing[];
   isRoundTrip: boolean;
+  skipHotels: boolean;
   setSelectedOutboundFlight: (flight: Flight) => void;
   setSelectedReturnFlight: (flight: Flight) => void;
   addHousing: (housing: Housing) => void;
   removeHousing: (housingId: number) => void;
   setSelectedHousing: (housing: Housing[]) => void;
   setIsRoundTrip: (isRoundTrip: boolean) => void;
+  setSkipHotels: (skip: boolean) => void;
   calculateTotal: () => number;
   resetBooking: () => void;
 }
@@ -29,6 +31,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   selectedReturnFlight: null,
   selectedHousing: [],
   isRoundTrip: false,
+  skipHotels: false,
   
   setSelectedOutboundFlight: (flight) => set({ selectedOutboundFlight: flight }),
   
@@ -46,6 +49,8 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   
   setIsRoundTrip: (isRoundTrip) => set({ isRoundTrip }),
   
+  setSkipHotels: (skip) => set({ skipHotels: skip }),
+  
   calculateTotal: () => {
     const state = get();
     const outboundFlightPrice = state.selectedOutboundFlight?.price || 0;
@@ -60,6 +65,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     selectedOutboundFlight: null,
     selectedReturnFlight: null,
     selectedHousing: [],
-    isRoundTrip: false
+    isRoundTrip: false,
+    skipHotels: false
   })
 }));

@@ -2,15 +2,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ExternalLink } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
 import { fetchFlights } from '@/services/travelApi';
 import { Flight } from '@/types';
 import { AuthGuard } from '@/components/AuthGuard';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
-// New components
+// Components
 import ApiKeyMissingAlert from '@/components/flights/ApiKeyMissingAlert';
 import FlightsLoading from '@/components/flights/FlightsLoading';
 import FlightsError from '@/components/flights/FlightsError';
@@ -25,7 +27,8 @@ const FlightsPage = () => {
     selectedReturnFlight, 
     setSelectedOutboundFlight, 
     setSelectedReturnFlight,
-    isRoundTrip
+    setIsRoundTrip,
+    setSkipHotels
   } = useBookingStore();
   
   const [outboundFlights, setOutboundFlights] = useState<Flight[]>([]);
@@ -36,6 +39,11 @@ const FlightsPage = () => {
   const [activeTab, setActiveTab] = useState<'outbound' | 'return'>('outbound');
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  const [skipAccommodations, setSkipAccommodations] = useState(false);
+  
+  // Determine if this is a round trip from localStorage
+  const tripTypeFromStorage = localStorage.getItem('tripType') || 'oneway';
+  const isRoundTrip = tripTypeFromStorage === 'roundtrip';
 
   // Location and date details
   const from = localStorage.getItem('fromLocation') || 'LAX';
@@ -59,6 +67,9 @@ const FlightsPage = () => {
     : undefined;
 
   useEffect(() => {
+    // Set the round trip status in the store
+    setIsRoundTrip(isRoundTrip);
+    
     // Check if API key exists
     const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
     if (!apiKey) {
@@ -71,34 +82,32 @@ const FlightsPage = () => {
       getFlights();
       setFetchAttempted(true);
     }
-  }, [fetchAttempted]);
+  }, [fetchAttempted, isRoundTrip, setIsRoundTrip]);
 
   const getFlights = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const from = localStorage.getItem('fromLocation') || 'LAX';
-      const to = localStorage.getItem('toLocation') || 'JFK';
+      const fromCode = localStorage.getItem('fromLocation') || 'LAX';
+      const toCode = localStorage.getItem('toLocation') || 'JFK';
       const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
+      const returnDateValue = localStorage.getItem('returnDate');
       const tripType = localStorage.getItem('tripType') || 'oneway';
       
-      console.log('Fetching outbound flights from:', from, 'to:', to, 'on:', departureDate);
+      console.log('Fetching outbound flights from:', fromCode, 'to:', toCode, 'on:', departureDate);
       
       // Fetch outbound flights
-      const outboundFlightsData = await fetchFlights(from, to, departureDate, undefined, 'oneway');
+      const outboundFlightsData = await fetchFlights(fromCode, toCode, departureDate, undefined, 'oneway');
       console.log('Outbound flights received:', outboundFlightsData.length);
       setOutboundFlights(outboundFlightsData);
       
       // If round trip, also fetch return flights
-      if (tripType === 'roundtrip') {
-        const returnDate = localStorage.getItem('returnDate');
-        if (returnDate) {
-          console.log('Fetching return flights from:', to, 'to:', from, 'on:', returnDate);
-          const returnFlightsData = await fetchFlights(to, from, returnDate, undefined, 'oneway');
-          console.log('Return flights received:', returnFlightsData.length);
-          setReturnFlights(returnFlightsData);
-        }
+      if (tripType === 'roundtrip' && returnDateValue) {
+        console.log('Fetching return flights from:', toCode, 'to:', fromCode, 'on:', returnDateValue);
+        const returnFlightsData = await fetchFlights(toCode, fromCode, returnDateValue, undefined, 'oneway');
+        console.log('Return flights received:', returnFlightsData.length);
+        setReturnFlights(returnFlightsData);
       }
     } catch (err: any) {
       console.error('Error fetching flights:', err);
@@ -140,7 +149,15 @@ const FlightsPage = () => {
       return;
     }
     
-    navigate('/accommodations');
+    // Set skip hotels preference in the store
+    setSkipHotels(skipAccommodations);
+    
+    // Navigate to accommodations or directly to checkout if skipping
+    if (skipAccommodations) {
+      navigate('/checkout');
+    } else {
+      navigate('/accommodations');
+    }
   };
 
   const sortFlights = (flights: Flight[]) => {
@@ -198,6 +215,7 @@ const FlightsPage = () => {
             from={from}
             to={to}
             departureDate={departureDate}
+            returnDate={returnDate}
             sortBy={sortBy}
             setSortBy={setSortBy}
           />
@@ -229,13 +247,35 @@ const FlightsPage = () => {
             </div>
           )}
           
-          <div className="flex justify-end">
+          <div className="mb-6 flex items-center space-x-2">
+            <Checkbox 
+              id="skip-accommodations" 
+              checked={skipAccommodations}
+              onCheckedChange={(checked) => setSkipAccommodations(checked === true)}
+            />
+            <Label 
+              htmlFor="skip-accommodations" 
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Skip hotel selection and proceed directly to checkout
+            </Label>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2"
+            >
+              Change Search
+            </Button>
+            
             <Button
               onClick={handleContinue}
               className="px-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
               disabled={!selectedOutboundFlight || (isRoundTrip && !selectedReturnFlight)}
             >
-              Continue to Accommodations
+              {skipAccommodations ? 'Continue to Checkout' : 'Continue to Accommodations'}
               <ArrowRight size={16} className="ml-2" />
             </Button>
           </div>

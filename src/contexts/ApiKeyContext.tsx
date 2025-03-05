@@ -18,16 +18,26 @@ const LOCAL_STORAGE_KEY = 'PERPLEXITY_API_KEY';
 export function ApiKeyProvider({ children }: { children: ReactNode }) {
   const [perplexityApiKey, setPerplexityApiKey] = useState<string | null>(null);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
   
   // Load key from localStorage on mount
   useEffect(() => {
-    const savedKey = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedKey) {
-      setPerplexityApiKey(savedKey);
-      console.log('Loaded Perplexity API key from localStorage');
-    } else {
-      console.log('No Perplexity API key found in localStorage');
-      setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
+    try {
+      const savedKey = localStorage.getItem(LOCAL_STORAGE_KEY);
+      
+      if (savedKey) {
+        setPerplexityApiKey(savedKey);
+        console.log('Loaded Perplexity API key from localStorage');
+        setApiKeyError(null);
+      } else {
+        console.log('No Perplexity API key found in localStorage');
+        setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
+      }
+    } catch (error) {
+      console.error('Error loading API key from localStorage:', error);
+      setApiKeyError('Error loading API key. Please try again.');
+    } finally {
+      setInitialized(true);
     }
   }, []);
   
@@ -43,12 +53,19 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
     const trimmedKey = key.trim();
     
     if (isValidPerplexityApiKey(trimmedKey)) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, trimmedKey);
-      setPerplexityApiKey(trimmedKey);
-      setApiKeyError(null);
-      console.log('Valid Perplexity API key saved');
-      toast.success('API key successfully saved');
-      return true;
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, trimmedKey);
+        setPerplexityApiKey(trimmedKey);
+        setApiKeyError(null);
+        console.log('Valid Perplexity API key saved');
+        toast.success('API key successfully saved');
+        return true;
+      } catch (error) {
+        console.error('Error saving API key to localStorage:', error);
+        setApiKeyError('Failed to save API key. Please try again.');
+        toast.error('Failed to save API key');
+        return false;
+      }
     } else {
       console.error('Invalid Perplexity API key format:', trimmedKey);
       setApiKeyError('Invalid API key format. Perplexity API keys start with "pplx-" or "pk-"');
@@ -59,11 +76,16 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
   
   // Remove API key from localStorage and state
   const removePerplexityApiKey = () => {
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    setPerplexityApiKey(null);
-    setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
-    console.log('Perplexity API key removed');
-    toast.info('API key removed');
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      setPerplexityApiKey(null);
+      setApiKeyError('No API key found. Please add your Perplexity API key in settings.');
+      console.log('Perplexity API key removed');
+      toast.info('API key removed');
+    } catch (error) {
+      console.error('Error removing API key from localStorage:', error);
+      toast.error('Failed to remove API key');
+    }
   };
   
   const value = {
@@ -74,6 +96,11 @@ export function ApiKeyProvider({ children }: { children: ReactNode }) {
     isValidPerplexityApiKey,
     apiKeyError,
   };
+  
+  // Only render children after initialization to prevent flickering
+  if (!initialized) {
+    return null;
+  }
   
   return <ApiKeyContext.Provider value={value}>{children}</ApiKeyContext.Provider>;
 }
