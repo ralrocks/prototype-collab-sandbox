@@ -4,7 +4,7 @@
  */
 
 // Re-export functions from flight service
-export { fetchFlights, generateFallbackFlights, formatDateForDisplay } from './flightService';
+export { fetchFlights, formatDateForDisplay } from './flightService';
 
 // Re-export functions from city service
 export { searchCities, fallbackCitySearch } from './cityService';
@@ -13,4 +13,4 @@ export { searchCities, fallbackCitySearch } from './cityService';
 export { getDestinationInfo } from './destinationService';
 
 // Re-export functions from hotel service
-export { fetchHotels, fallbackHotels } from './hotelService';
+export { fetchHotels } from './hotelService';
