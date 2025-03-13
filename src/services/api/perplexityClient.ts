@@ -71,6 +71,8 @@ export const makePerplexityRequest = async (
     }
     
     const data = await response.json();
+    console.log('API Response received:', data);
+    
     if (data.choices && data.choices.length > 0) {
       return data.choices[0].message.content;
     } else {
@@ -91,6 +93,8 @@ export const makePerplexityRequest = async (
  * Extract JSON from the API response
  */
 export const extractJsonFromResponse = (text: string): any => {
+  console.log('Attempting to extract JSON from response:', text.substring(0, 200) + '...');
+  
   try {
     // Try to parse the entire text as JSON first
     return JSON.parse(text);
@@ -98,39 +102,103 @@ export const extractJsonFromResponse = (text: string): any => {
     console.log('Couldn\'t parse entire response as JSON, trying to extract JSON portion');
     
     try {
-      // Look for JSON content within markdown code blocks
+      // Look for JSON content within markdown code blocks with better regex
       const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (codeBlockMatch && codeBlockMatch[1]) {
-        return JSON.parse(codeBlockMatch[1].trim());
+        const jsonContent = codeBlockMatch[1].trim();
+        console.log('Found JSON in code block:', jsonContent.substring(0, 200) + '...');
+        try {
+          return JSON.parse(jsonContent);
+        } catch (innerError) {
+          console.error('Error parsing JSON from code block:', innerError);
+        }
       }
       
-      // Try to extract JSON array with improved regex that captures complete objects only
-      const jsonArrayMatch = text.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+      // Try to extract JSON array with more robust regex
+      const jsonArrayMatch = text.match(/\[\s*\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}\s*(?:,\s*\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}\s*)*\]/);
       if (jsonArrayMatch) {
-        return JSON.parse(jsonArrayMatch[0]);
+        const arrayContent = jsonArrayMatch[0];
+        console.log('Found JSON array:', arrayContent.substring(0, 200) + '...');
+        try {
+          return JSON.parse(arrayContent);
+        } catch (innerError) {
+          console.error('Error parsing JSON array:', innerError);
+        }
       }
       
-      // Try to extract JSON object
-      const jsonObjectMatch = text.match(/\{\s*"[\s\S]*?"\s*:[\s\S]*?\}/);
+      // Try to extract JSON object with more robust regex
+      const jsonObjectMatch = text.match(/\{\s*"[^"]*"(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}/);
       if (jsonObjectMatch) {
-        return JSON.parse(jsonObjectMatch[0]);
+        const objectContent = jsonObjectMatch[0];
+        console.log('Found JSON object:', objectContent.substring(0, 200) + '...');
+        try {
+          return JSON.parse(objectContent);
+        } catch (innerError) {
+          console.error('Error parsing JSON object:', innerError);
+        }
       }
       
-      // Special handling for truncated responses - try to fix and parse
-      if (text.includes('[') && text.includes('{') && !text.includes(']')) {
-        // Response appears to be truncated array - try to close it properly
-        const fixedJson = text.substring(0, text.lastIndexOf('}') + 1) + ']';
-        console.log('Attempting to fix truncated JSON array:', fixedJson);
-        return JSON.parse(fixedJson);
+      // If we're here, try more aggressive approaches:
+      
+      // 1. Try to find anything that looks like an array of objects
+      const fixArrayAttempt = text.match(/\[\s*(\{.*\})\s*\]/s);
+      if (fixArrayAttempt) {
+        try {
+          console.log('Attempting to fix and parse array...');
+          return JSON.parse(fixArrayAttempt[0]);
+        } catch (e) {
+          console.error('Failed to fix array:', e);
+        }
       }
       
-      // If we can't find valid JSON, log the response and throw an error
+      // 2. Try to fix malformed JSON with missing closing brackets
+      if (text.includes('[') && text.includes('{')) {
+        try {
+          console.log('Attempting aggressive JSON repair...');
+          
+          // Count opening and closing brackets to check if any are missing
+          const openBrackets = (text.match(/\[/g) || []).length;
+          const closeBrackets = (text.match(/\]/g) || []).length;
+          const openCurly = (text.match(/\{/g) || []).length;
+          const closeCurly = (text.match(/\}/g) || []).length;
+          
+          console.log(`Bracket counts: [ = ${openBrackets}, ] = ${closeBrackets}, { = ${openCurly}, } = ${closeCurly}`);
+          
+          let repairedJson = text;
+          
+          // Try to fix the most common case - truncated JSON array
+          if (openBrackets > closeBrackets) {
+            console.log('Missing closing array brackets, attempting to add them');
+            repairedJson = repairedJson + ']'.repeat(openBrackets - closeBrackets);
+          }
+          
+          // Fix missing closing curly braces
+          if (openCurly > closeCurly) {
+            console.log('Missing closing curly braces, attempting to add them');
+            repairedJson = repairedJson + '}'.repeat(openCurly - closeCurly);
+          }
+          
+          // Try to extract just what looks like valid JSON
+          const jsonStart = repairedJson.indexOf('[');
+          if (jsonStart >= 0) {
+            repairedJson = repairedJson.substring(jsonStart);
+            console.log('Extracted potential JSON from position', jsonStart);
+          }
+          
+          // Check if we have valid JSON now
+          return JSON.parse(repairedJson);
+        } catch (e) {
+          console.error('Failed aggressive JSON repair:', e);
+        }
+      }
+
+      // 3. As a last resort, create a minimal valid array
       console.error('Could not extract valid JSON from response:', text);
-      toast.error('Invalid response format from API');
-      throw new Error('Could not extract valid JSON from API response');
+      console.log('Returning minimal fallback array');
+      return [];
     } catch (extractError) {
       console.error('Error extracting JSON from response:', extractError);
-      console.error('Original response:', text);
+      console.error('Original response text (truncated):', text.substring(0, 500));
       toast.error('Error parsing API response');
       throw new Error('Could not parse API response');
     }

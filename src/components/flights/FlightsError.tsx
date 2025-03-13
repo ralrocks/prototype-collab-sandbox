@@ -12,8 +12,10 @@ const FlightsError = ({ error, onRetry }: FlightsErrorProps) => {
   // Make error message more user-friendly
   const userFriendlyError = error.includes('API key') 
     ? 'Please add your API key in settings to search for flights'
-    : error.includes('parse') || error.includes('JSON')
-    ? 'We encountered an issue with the flight search API. Please try again.'
+    : error.includes('parse') || error.includes('JSON') || error.includes('extract')
+    ? 'We encountered an issue processing the flight data. The API response couldn\'t be parsed correctly. Please try again.'
+    : error.includes('Invalid') || error.includes('format')
+    ? 'The flight search returned data in an unexpected format. Please try again with different search criteria.'
     : error;
   
   return (
