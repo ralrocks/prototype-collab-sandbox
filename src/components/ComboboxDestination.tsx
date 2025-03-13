@@ -16,7 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { searchCities } from '@/services/travelApi';
+import { searchCities, getSavedLocations } from '@/services/travelApi';
 
 interface CityOption {
   code: string;
@@ -38,20 +38,7 @@ export function ComboboxDestination({
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<CityOption[]>([]);
   const [loading, setLoading] = useState(false);
-
-  // Popular destinations for quick selection
-  const popularDestinations: CityOption[] = [
-    { name: 'New York', code: 'NYC' },
-    { name: 'Los Angeles', code: 'LAX' },
-    { name: 'Chicago', code: 'ORD' },
-    { name: 'San Francisco', code: 'SFO' },
-    { name: 'Miami', code: 'MIA' },
-    { name: 'London', code: 'LHR' },
-    { name: 'Paris', code: 'CDG' },
-    { name: 'Tokyo', code: 'HND' },
-    { name: 'Dubai', code: 'DXB' },
-    { name: 'Sydney', code: 'SYD' },
-  ];
+  const [savedLocations, setSavedLocations] = useState<CityOption[]>([]);
 
   // Handle search input changes
   useEffect(() => {
@@ -67,7 +54,11 @@ export function ComboboxDestination({
         } catch (error) {
           console.error('Error searching cities:', error);
           if (isMounted) {
-            setOptions(popularDestinations.filter(dest => 
+            const savedResults = savedLocations.filter(dest => 
+              dest.name.toLowerCase().includes(query.toLowerCase()) ||
+              dest.code.toLowerCase().includes(query.toLowerCase())
+            );
+            setOptions(savedResults.length > 0 ? savedResults : popularDestinations.filter(dest => 
               dest.name.toLowerCase().includes(query.toLowerCase()) ||
               dest.code.toLowerCase().includes(query.toLowerCase())
             ));
@@ -78,7 +69,8 @@ export function ComboboxDestination({
           }
         }
       } else {
-        setOptions(popularDestinations);
+        // Show saved locations if query is empty or too short
+        setOptions(savedLocations.length > 0 ? savedLocations.slice(0, 5) : popularDestinations);
       }
     }, 300);
 
@@ -86,12 +78,30 @@ export function ComboboxDestination({
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, savedLocations]);
 
-  // Initialize with popular destinations
+  // Load saved locations on component mount
   useEffect(() => {
-    setOptions(popularDestinations);
+    const locations = getSavedLocations();
+    setSavedLocations(locations);
+    
+    // Initialize with saved locations or popular destinations
+    setOptions(locations.length > 0 ? locations.slice(0, 5) : popularDestinations);
   }, []);
+
+  // Popular destinations for quick selection
+  const popularDestinations: CityOption[] = [
+    { name: 'New York', code: 'NYC' },
+    { name: 'Los Angeles', code: 'LAX' },
+    { name: 'Chicago', code: 'ORD' },
+    { name: 'San Francisco', code: 'SFO' },
+    { name: 'Miami', code: 'MIA' },
+    { name: 'London', code: 'LHR' },
+    { name: 'Paris', code: 'CDG' },
+    { name: 'Tokyo', code: 'HND' },
+    { name: 'Dubai', code: 'DXB' },
+    { name: 'Sydney', code: 'SYD' },
+  ];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -118,6 +128,28 @@ export function ComboboxDestination({
             <CommandEmpty>
               {loading ? 'Searching...' : 'No results found.'}
             </CommandEmpty>
+            {savedLocations.length > 0 && query.length < 2 && (
+              <CommandGroup heading="Recently Used">
+                {savedLocations.slice(0, 5).map((option) => (
+                  <CommandItem
+                    key={`saved-${option.code}`}
+                    value={option.name}
+                    onSelect={() => {
+                      onSelect(option);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedValue === option.name ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {option.name} ({option.code})
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
             <CommandGroup heading="Destinations">
               {options.map((option) => (
                 <CommandItem

@@ -6,9 +6,11 @@ import { ArrowRight } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { useBookingStore } from '@/stores/bookingStore';
-import { fetchFlights } from '@/services/travelApi';
+import { fetchFlights, generateFallbackFlights } from '@/services/flightService';
 import { Flight } from '@/types';
 import { AuthGuard } from '@/components/AuthGuard';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 // Components
 import ApiKeyMissingAlert from '@/components/flights/ApiKeyMissingAlert';
@@ -40,13 +42,21 @@ const ReturnFlightsPage = () => {
   const to = localStorage.getItem('toLocation') || 'JFK';
   const fromName = localStorage.getItem('fromLocationName') || 'Los Angeles';
   const toName = localStorage.getItem('toLocationName') || 'New York';
-  const returnDate = localStorage.getItem('returnDate') 
-    ? new Date(localStorage.getItem('returnDate')!).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }) 
-    : 'Selected date';
+  
+  // Get return date from localStorage, if not available, create a default date (today + 7 days)
+  let returnDateValue = localStorage.getItem('returnDate');
+  if (!returnDateValue) {
+    const defaultReturnDate = new Date();
+    defaultReturnDate.setDate(defaultReturnDate.getDate() + 7);
+    returnDateValue = defaultReturnDate.toISOString().split('T')[0];
+    localStorage.setItem('returnDate', returnDateValue);
+  }
+  
+  const returnDate = new Date(returnDateValue).toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
 
   useEffect(() => {
     // Set the round trip status in the store
@@ -73,10 +83,10 @@ const ReturnFlightsPage = () => {
       
       const fromCode = localStorage.getItem('fromLocation') || 'LAX';
       const toCode = localStorage.getItem('toLocation') || 'JFK';
-      const returnDateValue = localStorage.getItem('returnDate');
       
       if (!returnDateValue) {
-        setError('Return date is required for return flights');
+        console.error('Return date missing, using fallback data');
+        setReturnFlights(generateFallbackFlights(toCode, fromCode, new Date().toISOString().split('T')[0], 'oneway'));
         setLoading(false);
         return;
       }
@@ -190,16 +200,17 @@ const ReturnFlightsPage = () => {
           </div>
           
           <div className="mb-6 flex items-center space-x-2">
-            <input 
-              type="checkbox" 
-              id="skip-accommodations"
+            <Checkbox 
+              id="skip-accommodations" 
               checked={skipAccommodations}
-              onChange={(e) => setSkipAccommodations(e.target.checked)}
-              className="rounded text-blue-500"
+              onCheckedChange={(checked) => setSkipAccommodations(checked === true)}
             />
-            <label htmlFor="skip-accommodations" className="text-sm">
+            <Label 
+              htmlFor="skip-accommodations" 
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
               Skip hotel selection and proceed directly to checkout
-            </label>
+            </Label>
           </div>
           
           <div className="flex justify-between items-center">

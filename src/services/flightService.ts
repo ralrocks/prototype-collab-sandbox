@@ -25,6 +25,75 @@ export const formatDateForDisplay = (dateString: string): string => {
 };
 
 /**
+ * Generate fallback flights when API is unavailable
+ */
+export const generateFallbackFlights = (
+  from: string, 
+  to: string, 
+  departureDate: string,
+  tripType: 'oneway' | 'roundtrip' = 'oneway'
+): Flight[] => {
+  const airlines = [
+    'Delta Air Lines', 'American Airlines', 'United Airlines', 'Southwest Airlines',
+    'JetBlue Airways', 'Alaska Airlines', 'British Airways', 'Air France', 
+    'Lufthansa', 'Emirates'
+  ];
+  
+  const cabins = ['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST'];
+  
+  const baseTime = new Date(departureDate);
+  baseTime.setHours(6, 0, 0, 0); // Start at 6am
+  
+  return Array.from({ length: 8 }, (_, index) => {
+    // Create departure time (starting from 6am with 1.5-hour intervals)
+    const departureTime = new Date(baseTime);
+    departureTime.setHours(departureTime.getHours() + index * 1.5);
+    
+    // Random duration between 2-8 hours
+    const durationHours = 2 + Math.floor(Math.random() * 6);
+    const durationMinutes = Math.floor(Math.random() * 60);
+    
+    // Calculate arrival time
+    const arrivalTime = new Date(departureTime);
+    arrivalTime.setHours(arrivalTime.getHours() + durationHours);
+    arrivalTime.setMinutes(arrivalTime.getMinutes() + durationMinutes);
+    
+    // Generate random price between $199-$899
+    const price = 199 + Math.floor(Math.random() * 700);
+    
+    // Random airline
+    const airline = airlines[Math.floor(Math.random() * airlines.length)];
+    
+    // Random cabin class with economy being most common
+    const cabinIndex = Math.floor(Math.random() * 10) < 7 ? 0 : Math.floor(Math.random() * cabins.length);
+    const cabin = cabins[cabinIndex];
+    
+    // Random number of stops (0-2) with non-stop being most common
+    const stopsRandom = Math.random();
+    const stops = stopsRandom < 0.6 ? 0 : stopsRandom < 0.9 ? 1 : 2;
+    
+    // Generate flight number
+    const flightNumber = `${airline.substring(0, 2).toUpperCase()}${1000 + Math.floor(Math.random() * 9000)}`;
+    
+    return {
+      id: index + 1,
+      attribute: airline,
+      question1: `${from} → ${to} (${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`,
+      price: price,
+      tripType: tripType,
+      details: {
+        flightNumber: flightNumber,
+        duration: `PT${durationHours}H${durationMinutes}M`,
+        departureTime: departureTime.toISOString(),
+        arrivalTime: arrivalTime.toISOString(),
+        cabin: cabin,
+        stops: stops
+      }
+    };
+  });
+};
+
+/**
  * Function to search for flights using Perplexity AI
  */
 export const fetchFlights = async (
@@ -39,9 +108,8 @@ export const fetchFlights = async (
   // Check if we have a valid API key
   const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
   if (!apiKey) {
-    console.log('No Perplexity API key found');
-    toast.error('API key is required to fetch flight data');
-    throw new Error('Perplexity API key not found. Please add your API key in settings.');
+    console.log('No Perplexity API key found, using fallback flight data');
+    return generateFallbackFlights(from, to, departureDate, tripType);
   }
   
   // Format dates for better readability
@@ -78,8 +146,8 @@ export const fetchFlights = async (
     
     if (!Array.isArray(flightData) || flightData.length === 0) {
       console.error('Invalid flight data received:', flightData);
-      toast.error('Unable to retrieve flight data. Please try again later.');
-      throw new Error('Invalid flight data received from API');
+      toast.error('Unable to retrieve flight data. Using fallback flights.');
+      return generateFallbackFlights(from, to, departureDate, tripType);
     }
     
     // Transform the data to match our Flight type
@@ -100,7 +168,7 @@ export const fetchFlights = async (
     }));
   } catch (error) {
     console.error('Error fetching flight data:', error);
-    toast.error('Failed to fetch flight data. Please try again later.');
-    throw error;
+    toast.error('Failed to fetch flight data. Using fallback flights.');
+    return generateFallbackFlights(from, to, departureDate, tripType);
   }
 };

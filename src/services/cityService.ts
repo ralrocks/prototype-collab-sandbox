@@ -3,6 +3,7 @@
  * Service for searching cities and airports
  */
 import { makePerplexityRequest, extractJsonFromResponse } from './api/perplexityClient';
+import { toast } from 'sonner';
 
 interface LocationOption {
   code: string;
@@ -38,6 +39,8 @@ export const searchCities = async (query: string): Promise<LocationOption[]> => 
     const results = extractJsonFromResponse(content);
     
     if (Array.isArray(results) && results.length > 0) {
+      // Save the AI-generated cities to localStorage for future use
+      saveLocationToLocalStorage(results);
       return results;
     } else {
       console.log('Invalid results format, using fallback data');
@@ -50,9 +53,64 @@ export const searchCities = async (query: string): Promise<LocationOption[]> => 
 };
 
 /**
+ * Save AI-generated city data to localStorage for future reference
+ */
+const saveLocationToLocalStorage = (locations: LocationOption[]) => {
+  try {
+    // Get existing saved locations
+    const savedLocationsString = localStorage.getItem('saved_locations');
+    let savedLocations: LocationOption[] = [];
+    
+    if (savedLocationsString) {
+      savedLocations = JSON.parse(savedLocationsString);
+    }
+    
+    // Add new locations, avoiding duplicates
+    for (const location of locations) {
+      if (!savedLocations.some(saved => saved.code === location.code)) {
+        savedLocations.push(location);
+      }
+    }
+    
+    // Save back to localStorage (limit to 50 locations to avoid storage issues)
+    localStorage.setItem('saved_locations', JSON.stringify(savedLocations.slice(0, 50)));
+  } catch (error) {
+    console.error('Error saving locations to localStorage:', error);
+  }
+};
+
+/**
+ * Get all saved locations from localStorage
+ */
+export const getSavedLocations = (): LocationOption[] => {
+  try {
+    const savedLocationsString = localStorage.getItem('saved_locations');
+    if (savedLocationsString) {
+      return JSON.parse(savedLocationsString);
+    }
+  } catch (error) {
+    console.error('Error retrieving saved locations:', error);
+  }
+  return [];
+};
+
+/**
  * Fallback city search function when API fails
  */
 export const fallbackCitySearch = (query: string): LocationOption[] => {
+  // First check saved locations from previous AI searches
+  const savedLocations = getSavedLocations();
+  if (savedLocations.length > 0) {
+    const filteredSaved = savedLocations.filter(location => 
+      location.name.toLowerCase().includes(query.toLowerCase()) || 
+      location.code.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    if (filteredSaved.length > 0) {
+      return filteredSaved.slice(0, 10);
+    }
+  }
+  
   // Comprehensive list of major destinations
   const allDestinations: LocationOption[] = [
     { code: 'JFK', name: 'New York (JFK), USA' },
