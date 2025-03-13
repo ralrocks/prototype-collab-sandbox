@@ -22,11 +22,24 @@ const hotelChainImages: Record<string, string> = {
   'Crowne Plaza': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
   'DoubleTree': 'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
   'Hampton': 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-  'Embassy Suites': 'https://images.unsplash.com/photo-1566195992011-5f6b21e539aa?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+  'Embassy Suites': 'https://images.unsplash.com/photo-1566195992011-5f6b21e539aa?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+  'Comfort Inn': 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+  'Courtyard': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+  'Fairfield Inn': 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+  'SpringHill Suites': 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+  'Renaissance Hotels': 'https://images.unsplash.com/photo-1566195992011-5f6b21e539aa?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+  'Residence Inn': 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
 };
 
 // Default image for hotels without a matching chain
 const defaultHotelImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60';
+
+/**
+ * Get a list of available hotel chains for filtering
+ */
+export const getAvailableHotelChains = (): string[] => {
+  return Object.keys(hotelChainImages);
+};
 
 /**
  * Get appropriate hotel image based on hotel name
@@ -52,15 +65,21 @@ export const fetchHotels = async (
     maxPrice?: number;
     minRating?: number;
     amenities?: string[];
+    hotelChains?: string[];
+    page?: number;
+    limit?: number;
   } = {}
 ): Promise<Hotel[]> => {
   console.log(`Fetching hotels in ${city} from ${checkIn} to ${checkOut} with filters:`, filters);
   
+  // Set default pagination
+  const page = filters.page || 1;
+  const limit = filters.limit || 10;
+  
   // Check if API key exists
   const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
   if (!apiKey) {
-    console.log('No Perplexity API key found');
-    toast.error('API key is required to fetch hotel data');
+    console.error('No Perplexity API key found');
     throw new Error('Perplexity API key not found. Please add your API key in settings.');
   }
   
@@ -75,12 +94,15 @@ export const fetchHotels = async (
   if (filters.amenities && filters.amenities.length > 0) {
     filterDescription += `Must include amenities: ${filters.amenities.join(', ')}. `;
   }
+  if (filters.hotelChains && filters.hotelChains.length > 0) {
+    filterDescription += `Preferred hotel chains: ${filters.hotelChains.join(', ')}. `;
+  }
   
   const systemPrompt = 'You are a hotel booking API. Return only valid JSON arrays of hotel data based on the query.';
-  const userPrompt = `Find 10 hotels in ${city} for a stay from ${checkIn} to ${checkOut}.
+  const userPrompt = `Find ${limit} hotels in ${city} for a stay from ${checkIn} to ${checkOut}.
   ${filterDescription ? `Filter requirements: ${filterDescription}` : ''}
   Include major hotel chains such as Marriott, Hilton, Hyatt, InterContinental, Holiday Inn, Sheraton, and other well-known brands.
-  Return results as a JSON array with each hotel having: id, name, price (per night in USD), rating (out of 5), amenities (array of strings), and location.
+  Return results as a JSON array with each hotel having: id, name, price (per night in USD), rating (out of 5), amenities (array of strings), location, and a brief description.
   Example format:
   [
     {
@@ -88,8 +110,9 @@ export const fetchHotels = async (
       "name": "Grand Plaza Hotel Marriott",
       "price": 199,
       "rating": 4.5,
-      "amenities": ["Free WiFi", "Pool", "Spa"],
-      "location": "Downtown Chicago"
+      "amenities": ["Free WiFi", "Pool", "Spa", "Fitness Center", "Restaurant"],
+      "location": "Downtown Chicago",
+      "description": "Luxury hotel in the heart of downtown with stunning city views."
     },
     ...
   ]
@@ -104,26 +127,34 @@ export const fetchHotels = async (
     
     if (!Array.isArray(hotelData) || hotelData.length === 0) {
       console.error('Invalid hotel data received:', hotelData);
-      toast.error('Unable to retrieve hotel data. Please try again later.');
-      throw new Error('Invalid hotel data received from API');
+      throw new Error('No hotel data found for this location and dates. Please try another search.');
     }
     
-    // Transform the data with appropriate images and apply filters
-    const processedHotels = hotelData.map((hotel: any, index: number) => ({
-      id: hotel.id || index + 1,
-      name: hotel.name || `Hotel ${index + 1}`,
-      price: typeof hotel.price === 'number' ? hotel.price : parseInt(hotel.price) || 150 + Math.floor(Math.random() * 200),
-      rating: typeof hotel.rating === 'number' ? hotel.rating : parseFloat(hotel.rating) || 4.0,
-      amenities: Array.isArray(hotel.amenities) ? hotel.amenities : ['Free WiFi', 'Breakfast'],
-      image: getHotelImage(hotel.name),
-      location: hotel.location || city
-    }));
+    // Transform the data with appropriate images
+    const processedHotels = hotelData.map((hotel: any, index: number) => {
+      // Determine if hotel belongs to a chain
+      const hotelName = hotel.name || `Hotel ${index + 1}`;
+      const matchedChain = Object.keys(hotelChainImages).find(chain => 
+        hotelName.toLowerCase().includes(chain.toLowerCase())
+      );
+      
+      return {
+        id: hotel.id || index + 1,
+        name: hotelName,
+        price: typeof hotel.price === 'number' ? hotel.price : parseInt(hotel.price) || 150 + Math.floor(Math.random() * 200),
+        rating: typeof hotel.rating === 'number' ? hotel.rating : parseFloat(hotel.rating) || 4.0,
+        amenities: Array.isArray(hotel.amenities) ? hotel.amenities : ['Free WiFi', 'Breakfast'],
+        image: getHotelImage(hotelName),
+        location: hotel.location || city,
+        brand: matchedChain || undefined,
+        description: hotel.description || `Comfortable accommodations in ${city}`
+      };
+    });
     
     // Apply filters on the processed data
     return filterHotels(processedHotels, filters);
   } catch (error) {
     console.error('Error fetching hotels:', error);
-    toast.error('Failed to fetch hotel data. Please try again later.');
     throw error;
   }
 };
@@ -144,6 +175,11 @@ const filterHotels = (hotels: Hotel[], filters: any): Hotel[] => {
     
     // Filter by rating
     if (filters.minRating && hotel.rating < filters.minRating) return false;
+    
+    // Filter by hotel chains
+    if (filters.hotelChains && filters.hotelChains.length > 0 && hotel.brand) {
+      if (!filters.hotelChains.includes(hotel.brand)) return false;
+    }
     
     // Filter by amenities
     if (filters.amenities && filters.amenities.length > 0) {

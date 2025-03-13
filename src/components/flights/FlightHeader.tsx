@@ -1,5 +1,5 @@
 
-import { MapPin, Calendar, ArrowRight, ArrowUpDown, Clock, DollarSign } from 'lucide-react';
+import { MapPin, Calendar, ArrowRight, Clock, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface FlightHeaderProps {
@@ -32,8 +32,8 @@ const FlightHeader = ({
           <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mb-4 md:mb-0">
             <div className="flex items-center">
               <MapPin size={18} className="text-blue-500 mr-2" />
-              <span className="font-medium">{fromName}</span>
-              <span className="text-gray-500 mx-2">({from})</span>
+              <span className="font-medium">{fromName || 'Departure'}</span>
+              {from && <span className="text-gray-500 mx-2">({from})</span>}
             </div>
             
             <div className="hidden md:block">
@@ -42,8 +42,8 @@ const FlightHeader = ({
             
             <div className="flex items-center mt-2 md:mt-0">
               <MapPin size={18} className="text-blue-500 mr-2" />
-              <span className="font-medium">{toName}</span>
-              <span className="text-gray-500 mx-2">({to})</span>
+              <span className="font-medium">{toName || 'Destination'}</span>
+              {to && <span className="text-gray-500 mx-2">({to})</span>}
             </div>
           </div>
           
@@ -65,7 +65,7 @@ const FlightHeader = ({
         <div className="flex justify-between items-center">
           <div>
             <span className="text-sm font-medium text-gray-500">
-              {isRoundTrip ? 'Round-trip' : 'One-way'} • Economy
+              {isRoundTrip ? 'Round-trip' : 'One-way'}
             </span>
           </div>
           

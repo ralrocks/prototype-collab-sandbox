@@ -12,6 +12,9 @@ export interface Flight {
     arrivalTime: string;
     cabin: string;
     stops: number;
+    airline?: string;
+    departureAirport?: string;
+    arrivalAirport?: string;
   };
 }
 
@@ -23,6 +26,8 @@ export interface Hotel {
   amenities: string[];
   image: string;
   location: string;
+  brand?: string;
+  description?: string;
 }
 
 export interface User {
