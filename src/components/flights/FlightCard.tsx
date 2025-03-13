@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Check, Clock, Info, Plane, Calendar, AlertTriangle, ChevronDown, ChevronUp, LuggerIcon, DollarSign, ExternalLink, CircleAlert } from 'lucide-react';
+import { Check, Clock, Info, Plane, Calendar, AlertTriangle, ChevronDown, ChevronUp, LuggageIcon, DollarSign, ExternalLink, CircleAlert } from 'lucide-react';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
