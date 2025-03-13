@@ -12,7 +12,6 @@ interface FlightListProps {
   onSelectFlight: (flight: Flight, direction?: 'outbound' | 'return') => void;
   fromName: string;
   toName: string;
-  lastFlightRef?: (node: HTMLDivElement | null) => void;
 }
 
 const FlightList = ({ 
@@ -21,8 +20,7 @@ const FlightList = ({
   selectedFlight, 
   onSelectFlight,
   fromName,
-  toName,
-  lastFlightRef
+  toName
 }: FlightListProps) => {
   const navigate = useNavigate();
   
@@ -41,35 +39,17 @@ const FlightList = ({
   
   return (
     <div className="space-y-4">
-      {flights.map((flight, index) => {
-        // If this is the last item and we have a ref function, attach the ref
-        if (index === flights.length - 1 && lastFlightRef) {
-          return (
-            <div key={flight.id} ref={lastFlightRef}>
-              <FlightCard
-                flight={flight}
-                direction={direction}
-                isSelected={selectedFlight?.id === flight.id}
-                onSelect={(f) => onSelectFlight(f, direction)}
-                fromName={fromName}
-                toName={toName}
-              />
-            </div>
-          );
-        }
-        
-        return (
-          <FlightCard
-            key={flight.id}
-            flight={flight}
-            direction={direction}
-            isSelected={selectedFlight?.id === flight.id}
-            onSelect={(f) => onSelectFlight(f, direction)}
-            fromName={fromName}
-            toName={toName}
-          />
-        );
-      })}
+      {flights.map((flight) => (
+        <FlightCard
+          key={flight.id}
+          flight={flight}
+          direction={direction}
+          isSelected={selectedFlight?.id === flight.id}
+          onSelect={(f) => onSelectFlight(f, direction)}
+          fromName={fromName}
+          toName={toName}
+        />
+      ))}
     </div>
   );
 };
