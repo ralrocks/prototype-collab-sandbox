@@ -432,7 +432,11 @@ const PackagesPage = () => {
                     
                     <Button onClick={() => {
                       applyFilters();
-                      document.querySelector('button[data-state="open"]')?.click(); // Close sheet after applying
+                      // Fix for TypeScript error - use proper DOM API to find and close the sheet
+                      const openButton = document.querySelector('[data-state="open"]');
+                      if (openButton && openButton instanceof HTMLButtonElement) {
+                        openButton.click();
+                      }
                     }} className="w-full">
                       Apply Filters
                     </Button>
