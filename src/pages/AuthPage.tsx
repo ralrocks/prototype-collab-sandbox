@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Lock, Mail, User, ArrowLeft } from 'lucide-react';
+import { Loader2, Lock, Mail, User } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -62,28 +62,12 @@ const AuthPage = () => {
     }
   };
   
-  const handleGoBack = () => {
-    navigate(-1);
-  };
-  
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-sky-100 to-white p-4">
       <div className="w-full max-w-md">
-        <div className="flex items-center mb-8">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleGoBack} 
-            className="mr-2 text-gray-600 hover:text-gray-900"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="text-center flex-1">
-            <h1 className="text-3xl font-bold mb-2">TravelBooker</h1>
-            <p className="text-gray-600">Your journey begins here</p>
-          </div>
-          <div className="w-10"></div>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">TravelBooker</h1>
+          <p className="text-gray-600">Your journey begins here</p>
         </div>
         
         <Tabs defaultValue="signin" className="w-full">
