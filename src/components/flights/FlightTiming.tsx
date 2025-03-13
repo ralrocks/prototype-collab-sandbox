@@ -49,26 +49,27 @@ export const FlightTiming = ({
 
   return (
     <div className="text-center">
-      <div className="flex items-center justify-center space-x-2">
+      <div className="flex items-center justify-center space-x-4">
         <div className="text-right">
-          <div className="font-medium">{getFormattedTime(departureTime)}</div>
-          <div className="text-xs text-gray-500">{direction === 'outbound' ? fromName : toName}</div>
+          <div className="font-semibold text-lg">{getFormattedTime(departureTime)}</div>
+          <div className="text-xs font-medium text-gray-500">{direction === 'outbound' ? fromName : toName}</div>
         </div>
         
-        <div className="w-16 h-px bg-gray-300 relative">
-          <div className="absolute w-2 h-2 bg-gray-300 rounded-full -top-[3px] -right-1"></div>
-          <div className="absolute w-2 h-2 bg-gray-300 rounded-full -top-[3px] -left-1"></div>
+        <div className="relative w-16 mx-1">
+          <div className="h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500 w-full absolute top-1/2 transform -translate-y-1/2"></div>
+          <div className="absolute w-2 h-2 bg-blue-500 rounded-full -top-[3px] -left-1"></div>
+          <div className="absolute w-2 h-2 bg-indigo-500 rounded-full -top-[3px] -right-1"></div>
         </div>
         
         <div className="text-left">
-          <div className="font-medium">{getFormattedTime(arrivalTime)}</div>
-          <div className="text-xs text-gray-500">{direction === 'outbound' ? toName : fromName}</div>
+          <div className="font-semibold text-lg">{getFormattedTime(arrivalTime)}</div>
+          <div className="text-xs font-medium text-gray-500">{direction === 'outbound' ? toName : fromName}</div>
         </div>
       </div>
       
-      <div className="flex items-center justify-center mt-1 text-sm text-gray-500">
-        <Clock size={14} className="mr-1" />
-        {duration ? duration : "Duration unavailable"}
+      <div className="flex items-center justify-center mt-2 text-sm">
+        <Clock size={14} className="mr-1 text-blue-500" />
+        <span className="font-medium text-gray-700">{duration ? duration : "Duration unavailable"}</span>
         
         {isDifferentDay() && (
           <Badge variant="outline" className="ml-2 text-xs bg-amber-50 text-amber-700 border-amber-200">

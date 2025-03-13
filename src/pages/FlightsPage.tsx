@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -169,7 +168,6 @@ const FlightsPage = () => {
             
             <div className="md:col-span-3">
               <FlightHeader 
-                isRoundTrip={!isOneWay}
                 fromName={fromName}
                 toName={toName}
                 from={localStorage.getItem('fromLocation') || ''}

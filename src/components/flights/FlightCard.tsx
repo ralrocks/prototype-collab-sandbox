@@ -69,12 +69,14 @@ const FlightCard = ({
   return (
     <Card 
       key={flight.id} 
-      className={`hover:shadow-lg transition-all cursor-pointer border-2 ${
-        isSelected ? 'border-green-500' : 'border-transparent'
+      className={`hover:shadow-lg transition-all duration-300 cursor-pointer border-2 animate-fade-in ${
+        isSelected 
+          ? 'border-green-500 shadow-md shadow-green-100' 
+          : 'border-transparent hover:border-blue-200'
       }`}
       onClick={() => onSelect(flight, direction)}
     >
-      <CardContent className="p-0">
+      <CardContent className="p-0 overflow-hidden">
         <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
           <FlightHeader 
             airline={flight.attribute} 
@@ -112,16 +114,16 @@ const FlightCard = ({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="w-full border-t border-gray-200 flex items-center justify-center py-2"
+              className="w-full border-t border-gray-200 flex items-center justify-center py-2 hover:bg-gray-50"
               onClick={handleExpand}
             >
               {expanded ? (
                 <>
-                  <ChevronUp size={16} className="mr-1" /> Hide details
+                  <ChevronUp size={16} className="mr-1 text-gray-500" /> Hide details
                 </>
               ) : (
                 <>
-                  <ChevronDown size={16} className="mr-1" /> Show more details
+                  <ChevronDown size={16} className="mr-1 text-gray-500" /> Show more details
                 </>
               )}
             </Button>

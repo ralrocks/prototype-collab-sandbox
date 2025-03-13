@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -507,7 +506,6 @@ const ReturnFlightsPage = () => {
             {/* Main Content */}
             <div className="md:col-span-3">
               <FlightHeader 
-                isRoundTrip={true}
                 fromName={toName}
                 toName={fromName}
                 from={to}
