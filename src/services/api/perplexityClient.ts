@@ -98,16 +98,30 @@ export const extractJsonFromResponse = (text: string): any => {
     console.log('Couldn\'t parse entire response as JSON, trying to extract JSON portion');
     
     try {
-      // Try to extract JSON array
-      const jsonArrayMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      // Look for JSON content within markdown code blocks
+      const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch && codeBlockMatch[1]) {
+        return JSON.parse(codeBlockMatch[1].trim());
+      }
+      
+      // Try to extract JSON array with improved regex that captures complete objects only
+      const jsonArrayMatch = text.match(/\[\s*\{[\s\S]*?\}\s*\]/);
       if (jsonArrayMatch) {
         return JSON.parse(jsonArrayMatch[0]);
       }
       
       // Try to extract JSON object
-      const jsonObjectMatch = text.match(/\{\s*"[\s\S]*"\s*:[\s\S]*\}/);
+      const jsonObjectMatch = text.match(/\{\s*"[\s\S]*?"\s*:[\s\S]*?\}/);
       if (jsonObjectMatch) {
         return JSON.parse(jsonObjectMatch[0]);
+      }
+      
+      // Special handling for truncated responses - try to fix and parse
+      if (text.includes('[') && text.includes('{') && !text.includes(']')) {
+        // Response appears to be truncated array - try to close it properly
+        const fixedJson = text.substring(0, text.lastIndexOf('}') + 1) + ']';
+        console.log('Attempting to fix truncated JSON array:', fixedJson);
+        return JSON.parse(fixedJson);
       }
       
       // If we can't find valid JSON, log the response and throw an error

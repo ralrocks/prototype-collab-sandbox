@@ -1,6 +1,7 @@
 
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 interface FlightsErrorProps {
   error: string;
@@ -8,16 +9,26 @@ interface FlightsErrorProps {
 }
 
 const FlightsError = ({ error, onRetry }: FlightsErrorProps) => {
+  // Make error message more user-friendly
+  const userFriendlyError = error.includes('API key') 
+    ? 'Please add your API key in settings to search for flights'
+    : error.includes('parse') || error.includes('JSON')
+    ? 'We encountered an issue with the flight search API. Please try again.'
+    : error;
+  
   return (
-    <div className="flex flex-col items-center justify-center py-12 space-y-4">
-      <div className="text-center">
-        <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={onRetry}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Try Again
-        </Button>
+    <Card className="w-full shadow-md">
+      <div className="flex flex-col items-center justify-center py-12 px-4 space-y-4">
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Flights Found</h3>
+          <p className="text-red-500 mb-4">{userFriendlyError}</p>
+          <Button onClick={onRetry} variant="default">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try Again
+          </Button>
+        </div>
       </div>
-    </div>
+    </Card>
   );
 };
 
