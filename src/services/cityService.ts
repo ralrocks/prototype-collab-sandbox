@@ -1,3 +1,4 @@
+
 import { makePerplexityRequest, extractJsonFromResponse } from './api/perplexityClient';
 import { toast } from 'sonner';
 
@@ -103,6 +104,11 @@ export const searchCities = async (query: string): Promise<CityOption[]> => {
   const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
   if (!apiKey) {
     console.log('No Perplexity API key found, using fallback city search');
+    return fallbackCitySearch(query);
+  }
+  
+  if (!query || query.trim().length < 2) {
+    console.log('Query too short, using fallback city search');
     return fallbackCitySearch(query);
   }
   

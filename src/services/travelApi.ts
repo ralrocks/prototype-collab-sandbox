@@ -7,7 +7,7 @@
 export { fetchFlights, formatDateForDisplay, generateFallbackFlights } from './flightService';
 
 // Re-export functions from city service
-export { searchCities, fallbackCitySearch, getSavedLocations } from './cityService';
+export { searchCities, fallbackCitySearch, getSavedLocations, saveLocation } from './cityService';
 
 // Re-export functions from destination service
 export { getDestinationInfo } from './destinationService';
@@ -20,3 +20,8 @@ export { fetchCarRentals } from './carRentalService';
 
 // Re-export functions from package service
 export { fetchTravelPackages } from './packageService';
+
+// Create a small debugging helper that can be used throughout the app
+export const debugLog = (message: string, data?: any) => {
+  console.log(`[Travel API] ${message}`, data || '');
+};

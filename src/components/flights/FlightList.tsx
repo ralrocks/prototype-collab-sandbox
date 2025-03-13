@@ -28,6 +28,14 @@ const FlightList = ({
 }: FlightListProps) => {
   const navigate = useNavigate();
   
+  console.log('FlightList rendering with:', { 
+    flightsCount: flights.length, 
+    direction, 
+    selectedFlightId: selectedFlight?.id,
+    fromName,
+    toName
+  });
+  
   if (loading) {
     return (
       <Card>

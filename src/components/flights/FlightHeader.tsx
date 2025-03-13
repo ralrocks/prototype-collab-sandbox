@@ -1,5 +1,5 @@
 
-import { MapPin, Calendar, ArrowRight, ArrowUpDown, Clock, DollarSign } from 'lucide-react';
+import { MapPin, Calendar, ArrowRight, Clock, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface FlightHeaderProps {
@@ -25,6 +25,8 @@ const FlightHeader = ({
   sortBy, 
   setSortBy 
 }: FlightHeaderProps) => {
+  console.log('FlightHeader rendering with:', { fromName, toName, from, to });
+  
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm mb-4 w-full">
       <div className="flex flex-col md:flex-row justify-between md:items-center mb-6">
