@@ -9,6 +9,7 @@ import { ApiKeyProvider } from './contexts/ApiKeyContext';
 import Index from './pages/Index';
 import SearchPage from './pages/SearchPage';
 import FlightsPage from './pages/FlightsPage';
+import ReturnFlightsPage from './pages/ReturnFlightsPage';
 import AccommodationsPage from './pages/AccommodationsPage';
 import AuthPage from './pages/AuthPage';
 import SettingsPage from './pages/SettingsPage';
@@ -32,6 +33,7 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/flights" element={<FlightsPage />} />
+              <Route path="/return-flights" element={<ReturnFlightsPage />} />
               <Route path="/accommodations" element={<AccommodationsPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/settings" element={<SettingsPage />} />

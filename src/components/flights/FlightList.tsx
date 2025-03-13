@@ -9,7 +9,7 @@ interface FlightListProps {
   flights: Flight[];
   direction: 'outbound' | 'return';
   selectedFlight: Flight | null;
-  onSelectFlight: (flight: Flight, direction: 'outbound' | 'return') => void;
+  onSelectFlight: (flight: Flight, direction?: 'outbound' | 'return') => void;
   fromName: string;
   toName: string;
 }
@@ -45,7 +45,7 @@ const FlightList = ({
           flight={flight}
           direction={direction}
           isSelected={selectedFlight?.id === flight.id}
-          onSelect={onSelectFlight}
+          onSelect={(f) => onSelectFlight(f, direction)}
           fromName={fromName}
           toName={toName}
         />

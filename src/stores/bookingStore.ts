@@ -54,7 +54,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   calculateTotal: () => {
     const state = get();
     const outboundFlightPrice = state.selectedOutboundFlight?.price || 0;
-    const returnFlightPrice = state.selectedReturnFlight?.price || 0;
+    const returnFlightPrice = state.isRoundTrip ? (state.selectedReturnFlight?.price || 0) : 0;
     const housingTotal = state.selectedHousing.reduce((sum, item) => sum + item.price, 0);
     const additionalFees = 2500; // SAX to Section fee
     
