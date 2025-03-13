@@ -30,6 +30,13 @@ const SearchPage = () => {
     rooms: 1,
     cabinClass: 'economy'
   });
+  
+  const [validationErrors, setValidationErrors] = useState<{
+    from?: string;
+    to?: string;
+    departDate?: string;
+    returnDate?: string;
+  }>({});
 
   const handleDestinationSelect = (key: 'from' | 'to', value: { code: string; name: string }) => {
     setSearchParams({
@@ -37,6 +44,40 @@ const SearchPage = () => {
       [key]: value.name,
       [`${key}Code`]: value.code
     });
+    
+    // Clear validation error when a value is selected
+    if (validationErrors[key]) {
+      setValidationErrors({
+        ...validationErrors,
+        [key]: undefined
+      });
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: {
+      from?: string;
+      to?: string;
+      departDate?: string;
+      returnDate?: string;
+    } = {};
+    
+    if (!searchParams.from) {
+      errors.from = 'Please select a departure city';
+    }
+    
+    if (!searchParams.to) {
+      errors.to = 'Please select a destination city';
+    }
+    
+    if (!searchParams.departDate) {
+      errors.departDate = 'Please select a departure date';
+    }
+    
+    setValidationErrors(errors);
+    
+    // Form is valid if errors object is empty
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -53,10 +94,30 @@ const SearchPage = () => {
       return;
     }
     
+    // Validate the form
+    if (!validateForm()) {
+      // Display validation errors
+      Object.entries(validationErrors).forEach(([field, error]) => {
+        if (error) {
+          toast.error(error);
+        }
+      });
+      return;
+    }
+    
     if (searchParams.tab === 'flights') {
-      if (!searchParams.from || !searchParams.to) {
-        toast.error('Please select departure and destination cities');
-        return;
+      // Save flight search parameters to localStorage
+      localStorage.setItem('fromLocation', searchParams.fromCode);
+      localStorage.setItem('toLocation', searchParams.toCode);
+      localStorage.setItem('fromLocationName', searchParams.from);
+      localStorage.setItem('toLocationName', searchParams.to);
+      localStorage.setItem('departureDate', searchParams.departDate.toISOString());
+      
+      // Save return date only if it's a valid date
+      if (searchParams.returnDate) {
+        localStorage.setItem('returnDate', searchParams.returnDate.toISOString());
+      } else {
+        localStorage.removeItem('returnDate');
       }
       
       navigate('/flights', { state: searchParams });
@@ -65,6 +126,12 @@ const SearchPage = () => {
         toast.error('Please select a destination');
         return;
       }
+      
+      // Save hotel search parameters
+      localStorage.setItem('hotelDestination', searchParams.toCode);
+      localStorage.setItem('hotelDestinationName', searchParams.to);
+      localStorage.setItem('checkInDate', searchParams.departDate.toISOString());
+      localStorage.setItem('checkOutDate', searchParams.returnDate.toISOString());
       
       navigate('/accommodations', { state: searchParams });
     } else {

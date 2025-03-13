@@ -35,6 +35,22 @@ export const fetchFlights = async (
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
   console.log(`Page: ${page}, Limit: ${limit}`);
   
+  // Validate required inputs
+  if (!from) {
+    console.error('Missing departure location');
+    throw new Error('Please enter a departure location');
+  }
+  
+  if (!to) {
+    console.error('Missing destination location');
+    throw new Error('Please enter a destination location');
+  }
+  
+  if (!departureDate) {
+    console.error('Missing departure date');
+    throw new Error('Please select a departure date');
+  }
+  
   // Check if we have a valid API key
   const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
   if (!apiKey) {
