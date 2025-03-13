@@ -1,3 +1,4 @@
+
 export interface Flight {
   id: number;
   attribute: string;
@@ -67,4 +68,12 @@ export interface TravelPackage {
   rating: number;
   inclusions: string[];
   url: string;
+}
+
+export interface FlightFilter {
+  stops: number[] | null;
+  cabins: string[] | null;
+  airlines: string[] | null;
+  priceRange: [number, number] | null;
+  departureTimeRange: [string, string] | null;
 }

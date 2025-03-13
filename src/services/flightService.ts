@@ -44,7 +44,7 @@ export const generateFallbackFlights = (
   const baseTime = new Date(departureDate);
   baseTime.setHours(6, 0, 0, 0); // Start at 6am
   
-  return Array.from({ length: 8 }, (_, index) => {
+  return Array.from({ length: 15 }, (_, index) => {
     // Create departure time (starting from 6am with 1.5-hour intervals)
     const departureTime = new Date(baseTime);
     departureTime.setHours(departureTime.getHours() + index * 1.5);
@@ -101,9 +101,12 @@ export const fetchFlights = async (
   to: string, 
   departureDate: string = '2023-12-10',
   returnDate?: string,
-  tripType: 'oneway' | 'roundtrip' = 'oneway'
+  tripType: 'oneway' | 'roundtrip' = 'oneway',
+  page: number = 1,
+  limit: number = 10
 ): Promise<Flight[]> => {
   console.log(`Fetching ${tripType} flights from ${from} to ${to} for ${departureDate}${returnDate ? ` with return on ${returnDate}` : ''}`);
+  console.log(`Page: ${page}, Limit: ${limit}`);
   
   // Check if we have a valid API key
   const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
@@ -119,7 +122,7 @@ export const fetchFlights = async (
   // Build the prompt for Perplexity
   const systemPrompt = 'You are a flight search API. You return ONLY valid JSON arrays of flight information based on the user query. No explanations, just data.';
   const userPrompt = `Search for ${tripType === 'roundtrip' ? 'round-trip' : 'one-way'} flights from ${from} to ${to} on ${formattedDepartureDate}${formattedReturnDate ? ` with return on ${formattedReturnDate}` : ''}. 
-  Format the results as a structured JSON array of exactly 8 flight options. 
+  Format the results as a structured JSON array of exactly ${limit} flight options. 
   Each flight should include: airline name, flight number, departure time, arrival time, duration, number of stops (0 for non-stop), cabin class (ECONOMY, PREMIUM_ECONOMY, BUSINESS, or FIRST), and price in USD.
   Don't include any explanation, just return valid JSON that can be parsed with JSON.parse().
   Format the response exactly like this example:
@@ -134,7 +137,7 @@ export const fetchFlights = async (
       "cabin": "ECONOMY",
       "price": 299
     },
-    ...7 more similar objects
+    ...${limit-1} more similar objects
   ]`;
   
   try {
@@ -152,7 +155,7 @@ export const fetchFlights = async (
     
     // Transform the data to match our Flight type
     return flightData.map((flight: any, index: number) => ({
-      id: index + 1,
+      id: (page - 1) * limit + index + 1,
       attribute: flight.airline || 'Unknown Airline',
       question1: `${from} → ${to} (${new Date(flight.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(flight.arrivalTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`,
       price: flight.price || Math.floor(200 + Math.random() * 300),
@@ -166,7 +169,7 @@ export const fetchFlights = async (
         stops: flight.stops || 0
       }
     }));
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching flight data:', error);
     toast.error('Failed to fetch flight data. Using fallback flights.');
     return generateFallbackFlights(from, to, departureDate, tripType);
