@@ -11,6 +11,8 @@ import SearchPage from './pages/SearchPage';
 import FlightsPage from './pages/FlightsPage';
 import ReturnFlightsPage from './pages/ReturnFlightsPage';
 import AccommodationsPage from './pages/AccommodationsPage';
+import CarsPage from './pages/CarsPage';
+import PackagesPage from './pages/PackagesPage';
 import AuthPage from './pages/AuthPage';
 import SettingsPage from './pages/SettingsPage';
 import ItineraryPage from './pages/ItineraryPage';
@@ -35,6 +37,8 @@ function App() {
               <Route path="/flights" element={<FlightsPage />} />
               <Route path="/return-flights" element={<ReturnFlightsPage />} />
               <Route path="/accommodations" element={<AccommodationsPage />} />
+              <Route path="/cars" element={<CarsPage />} />
+              <Route path="/packages" element={<PackagesPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/itinerary" element={<ItineraryPage />} />

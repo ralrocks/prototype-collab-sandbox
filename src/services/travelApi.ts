@@ -14,3 +14,9 @@ export { getDestinationInfo } from './destinationService';
 
 // Re-export functions from hotel service
 export { fetchHotels } from './hotelService';
+
+// Re-export functions from car rental service
+export { fetchCarRentals } from './carRentalService';
+
+// Re-export functions from package service
+export { fetchTravelPackages } from './packageService';
