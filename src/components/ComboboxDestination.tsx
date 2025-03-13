@@ -49,6 +49,7 @@ export function ComboboxDestination({
         try {
           const results = await searchCities(query);
           if (isMounted) {
+            console.log("City search results:", results);
             setOptions(results);
           }
         } catch (error) {
@@ -135,6 +136,7 @@ export function ComboboxDestination({
                     key={`saved-${option.code}`}
                     value={option.name}
                     onSelect={() => {
+                      console.log("Selected saved location:", option);
                       onSelect(option);
                       setOpen(false);
                     }}
@@ -156,6 +158,7 @@ export function ComboboxDestination({
                   key={option.code}
                   value={option.name}
                   onSelect={() => {
+                    console.log("Selected destination:", option);
                     onSelect(option);
                     setOpen(false);
                   }}

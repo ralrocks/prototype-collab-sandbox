@@ -44,6 +44,8 @@ export const generateFallbackFlights = (
   const baseTime = new Date(departureDate);
   baseTime.setHours(6, 0, 0, 0); // Start at 6am
   
+  console.log(`Generating fallback flights from ${from} to ${to}`);
+  
   return Array.from({ length: 15 }, (_, index) => {
     // Create departure time (starting from 6am with 1.5-hour intervals)
     const departureTime = new Date(baseTime);
@@ -115,34 +117,44 @@ export const fetchFlights = async (
     return generateFallbackFlights(from, to, departureDate, tripType);
   }
   
-  // Format dates for better readability
-  const formattedDepartureDate = formatDateForDisplay(departureDate);
-  const formattedReturnDate = returnDate ? formatDateForDisplay(returnDate) : undefined;
-  
-  // Build the prompt for Perplexity
-  const systemPrompt = 'You are a flight search API. You return ONLY valid JSON arrays of flight information based on the user query. No explanations, just data.';
-  const userPrompt = `Search for ${tripType === 'roundtrip' ? 'round-trip' : 'one-way'} flights from ${from} to ${to} on ${formattedDepartureDate}${formattedReturnDate ? ` with return on ${formattedReturnDate}` : ''}. 
-  Format the results as a structured JSON array of exactly ${limit} flight options. 
-  Each flight should include: airline name, flight number, departure time, arrival time, duration, number of stops (0 for non-stop), cabin class (ECONOMY, PREMIUM_ECONOMY, BUSINESS, or FIRST), and price in USD.
-  Don't include any explanation, just return valid JSON that can be parsed with JSON.parse().
-  Format the response exactly like this example:
-  [
-    {
-      "airline": "Delta Air Lines",
-      "flightNumber": "DL1234",
-      "departureTime": "2023-12-10T08:30:00.000Z",
-      "arrivalTime": "2023-12-10T11:45:00.000Z",
-      "duration": "PT3H15M",
-      "stops": 0,
-      "cabin": "ECONOMY",
-      "price": 299
-    },
-    ...${limit-1} more similar objects
-  ]`;
-  
   try {
+    // Format dates for better readability
+    const formattedDepartureDate = formatDateForDisplay(departureDate);
+    const formattedReturnDate = returnDate ? formatDateForDisplay(returnDate) : undefined;
+    
+    // Build the prompt for Perplexity
+    const systemPrompt = 'You are a flight search API. You return ONLY valid JSON arrays of flight information based on the user query. No explanations, just data.';
+    const userPrompt = `Search for ${tripType === 'roundtrip' ? 'round-trip' : 'one-way'} flights from ${from} to ${to} on ${formattedDepartureDate}${formattedReturnDate ? ` with return on ${formattedReturnDate}` : ''}. 
+    Format the results as a structured JSON array of exactly ${limit} flight options. 
+    Each flight should include: airline name, flight number, departure time, arrival time, duration, number of stops (0 for non-stop), cabin class (ECONOMY, PREMIUM_ECONOMY, BUSINESS, or FIRST), and price in USD.
+    Don't include any explanation, just return valid JSON that can be parsed with JSON.parse().
+    Format the response exactly like this example:
+    [
+      {
+        "airline": "Delta Air Lines",
+        "flightNumber": "DL1234",
+        "departureTime": "2023-12-10T08:30:00.000Z",
+        "arrivalTime": "2023-12-10T11:45:00.000Z",
+        "duration": "PT3H15M",
+        "stops": 0,
+        "cabin": "ECONOMY",
+        "price": 299
+      },
+      ...${limit-1} more similar objects
+    ]`;
+    
+    console.log('Making Perplexity request for flights search');
+    
     // Make the API request
     const content = await makePerplexityRequest(systemPrompt, userPrompt);
+    
+    if (!content) {
+      console.error('Empty response received from Perplexity');
+      toast.error('Unable to retrieve flight data. Using fallback flights.');
+      return generateFallbackFlights(from, to, departureDate, tripType);
+    }
+    
+    console.log('Received response from Perplexity');
     
     // Parse the JSON from the response
     const flightData = extractJsonFromResponse(content);
@@ -152,6 +164,8 @@ export const fetchFlights = async (
       toast.error('Unable to retrieve flight data. Using fallback flights.');
       return generateFallbackFlights(from, to, departureDate, tripType);
     }
+    
+    console.log(`Successfully parsed ${flightData.length} flights`);
     
     // Transform the data to match our Flight type
     return flightData.map((flight: any, index: number) => ({
