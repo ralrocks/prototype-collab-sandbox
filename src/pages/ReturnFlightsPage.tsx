@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -16,7 +17,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import ApiKeyMissingAlert from '@/components/flights/ApiKeyMissingAlert';
 import FlightsLoading from '@/components/flights/FlightsLoading';
 import FlightsError from '@/components/flights/FlightsError';
-import FlightHeader from '@/components/flights/FlightHeader';
+import { FlightHeader } from '@/components/flights/FlightHeader';
 import FlightList from '@/components/flights/FlightList';
 
 const ReturnFlightsPage = () => {

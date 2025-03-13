@@ -15,7 +15,7 @@ import { useFlightSearch } from '@/hooks/useFlightSearch';
 import ApiKeyMissingAlert from '@/components/flights/ApiKeyMissingAlert';
 import FlightsLoading from '@/components/flights/FlightsLoading';
 import FlightsError from '@/components/flights/FlightsError';
-import FlightHeader from '@/components/flights/FlightHeader';
+import { FlightHeader } from '@/components/flights/FlightHeader';
 import FlightList from '@/components/flights/FlightList';
 import FlightFilters from '@/components/flights/FlightFilters';
 import MobileFilters from '@/components/flights/MobileFilters';
