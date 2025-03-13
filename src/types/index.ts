@@ -15,6 +15,16 @@ export interface Flight {
     airline?: string;
     departureAirport?: string;
     arrivalAirport?: string;
+    aircraft?: string;
+    bookingLink?: string;
+    amenities?: string[];
+    baggageAllowance?: string;
+    cancellationPolicy?: string;
+    onTimePerformance?: string;
+    terminalInfo?: {
+      departure?: string;
+      arrival?: string;
+    };
   };
 }
 
@@ -28,6 +38,21 @@ export interface Hotel {
   location: string;
   brand?: string;
   description?: string;
+  bookingLink?: string;
+  roomTypes?: {
+    name: string;
+    price: number;
+    description: string;
+  }[];
+  policies?: {
+    cancellation: string;
+    checkIn: string;
+    checkOut: string;
+  };
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export interface User {

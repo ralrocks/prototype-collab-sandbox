@@ -4,7 +4,12 @@
  */
 
 // Re-export functions from flight service
-export { fetchFlights, formatDateForDisplay, formatDuration } from './flightService';
+export { 
+  fetchFlights, 
+  formatDateForDisplay, 
+  formatDuration,
+  getFlightDetails
+} from './flightService';
 
 // Re-export functions from city service
 export { searchCities, fallbackCitySearch, getSavedLocations } from './cityService';
