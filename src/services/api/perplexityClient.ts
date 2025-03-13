@@ -24,8 +24,6 @@ export const makePerplexityRequest = async (
   
   try {
     console.log(`Making Perplexity API request with model: ${model}`);
-    console.log('System prompt:', systemPrompt);
-    console.log('User prompt:', userPrompt);
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
@@ -74,7 +72,6 @@ export const makePerplexityRequest = async (
     
     const data = await response.json();
     if (data.choices && data.choices.length > 0) {
-      console.log('API response received:', data.choices[0].message.content.substring(0, 100) + '...');
       return data.choices[0].message.content;
     } else {
       toast.error('No content returned from API');
@@ -99,7 +96,6 @@ export const extractJsonFromResponse = (text: string): any => {
     return JSON.parse(text);
   } catch (error) {
     console.log('Couldn\'t parse entire response as JSON, trying to extract JSON portion');
-    console.log('Raw response:', text);
     
     try {
       // Try to extract JSON array

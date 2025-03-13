@@ -1,19 +1,13 @@
-
 import { Loader2, Plane } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-interface FlightsLoadingProps {
-  fromName?: string;
-  toName?: string;
-}
-
-const FlightsLoading = ({ fromName, toName }: FlightsLoadingProps) => {
+const FlightsLoading = () => {
   const [loadingMessage, setLoadingMessage] = useState('Searching for the best flight deals');
   const [dots, setDots] = useState('');
 
   useEffect(() => {
     const messages = [
-      `Searching for flights${fromName && toName ? ` from ${fromName} to ${toName}` : ''}`,
+      'Searching for the best flight deals',
       'Checking airlines for availability',
       'Finding the most affordable options',
       'Comparing prices across carriers',
@@ -34,7 +28,7 @@ const FlightsLoading = ({ fromName, toName }: FlightsLoadingProps) => {
       clearInterval(messageInterval);
       clearInterval(dotsInterval);
     };
-  }, [fromName, toName]);
+  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4">

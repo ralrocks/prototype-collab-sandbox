@@ -13,7 +13,6 @@ interface FlightListProps {
   fromName: string;
   toName: string;
   lastFlightRef?: (node: HTMLDivElement | null) => void;
-  loading?: boolean;
 }
 
 const FlightList = ({ 
@@ -23,28 +22,9 @@ const FlightList = ({
   onSelectFlight,
   fromName,
   toName,
-  lastFlightRef,
-  loading = false
+  lastFlightRef
 }: FlightListProps) => {
   const navigate = useNavigate();
-  
-  console.log('FlightList rendering with:', { 
-    flightsCount: flights.length, 
-    direction, 
-    selectedFlightId: selectedFlight?.id,
-    fromName,
-    toName
-  });
-  
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-12 text-center">
-          <p className="text-gray-500 mb-4">Loading flights...</p>
-        </CardContent>
-      </Card>
-    );
-  }
   
   if (flights.length === 0) {
     return (

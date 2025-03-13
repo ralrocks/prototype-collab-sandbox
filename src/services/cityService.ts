@@ -1,157 +1,181 @@
 
+/**
+ * Service for searching cities and airports
+ */
 import { makePerplexityRequest, extractJsonFromResponse } from './api/perplexityClient';
 import { toast } from 'sonner';
 
-interface CityOption {
+interface LocationOption {
   code: string;
   name: string;
 }
 
-const SAVED_LOCATIONS_KEY = 'savedLocations';
-
 /**
- * Get saved locations from localStorage
+ * Search for cities or airports matching the query
  */
-export const getSavedLocations = (): CityOption[] => {
-  try {
-    const savedLocations = localStorage.getItem(SAVED_LOCATIONS_KEY);
-    return savedLocations ? JSON.parse(savedLocations) : [];
-  } catch (error) {
-    console.error('Error getting saved locations:', error);
-    return [];
-  }
-};
-
-/**
- * Save a location to localStorage
- */
-export const saveLocation = (location: CityOption): void => {
-  try {
-    const savedLocations = getSavedLocations();
-    
-    // Check if location already exists
-    const existingIndex = savedLocations.findIndex(loc => loc.code === location.code);
-    
-    // If it exists, remove it (to move it to the top)
-    if (existingIndex !== -1) {
-      savedLocations.splice(existingIndex, 1);
-    }
-    
-    // Add location to the beginning of the array
-    savedLocations.unshift(location);
-    
-    // Keep only the last 10 locations
-    const updatedLocations = savedLocations.slice(0, 10);
-    
-    // Save to localStorage
-    localStorage.setItem(SAVED_LOCATIONS_KEY, JSON.stringify(updatedLocations));
-    console.log('Location saved to localStorage:', location);
-  } catch (error) {
-    console.error('Error saving location:', error);
-  }
-};
-
-/**
- * Fallback city search when API is unavailable
- */
-export const fallbackCitySearch = (query: string): CityOption[] => {
-  const cities = [
-    { name: 'New York', code: 'NYC' },
-    { name: 'Los Angeles', code: 'LAX' },
-    { name: 'Chicago', code: 'ORD' },
-    { name: 'San Francisco', code: 'SFO' },
-    { name: 'Miami', code: 'MIA' },
-    { name: 'Boston', code: 'BOS' },
-    { name: 'London', code: 'LHR' },
-    { name: 'Paris', code: 'CDG' },
-    { name: 'Tokyo', code: 'HND' },
-    { name: 'Dubai', code: 'DXB' },
-    { name: 'Sydney', code: 'SYD' },
-    { name: 'Hong Kong', code: 'HKG' },
-    { name: 'Singapore', code: 'SIN' },
-    { name: 'Amsterdam', code: 'AMS' },
-    { name: 'Beijing', code: 'PEK' },
-    { name: 'Denver', code: 'DEN' },
-    { name: 'Las Vegas', code: 'LAS' },
-    { name: 'Frankfurt', code: 'FRA' },
-    { name: 'Berlin', code: 'BER' },
-    { name: 'Toronto', code: 'YYZ' },
-    { name: 'Seattle', code: 'SEA' },
-    { name: 'Barcelona', code: 'BCN' },
-    { name: 'Rome', code: 'FCO' },
-    { name: 'Madrid', code: 'MAD' },
-    { name: 'Cancun', code: 'CUN' },
-    { name: 'Atlanta', code: 'ATL' },
-    { name: 'Bangkok', code: 'BKK' },
-    { name: 'Austin', code: 'AUS' },
-    { name: 'Dallas', code: 'DFW' },
-    { name: 'Houston', code: 'IAH' },
-  ];
-  
-  return cities.filter(city => 
-    city.name.toLowerCase().includes(query.toLowerCase()) || 
-    city.code.toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 10);
-};
-
-/**
- * Search for cities/airports using Perplexity API
- */
-export const searchCities = async (query: string): Promise<CityOption[]> => {
-  console.log('Searching cities with query:', query);
-  
-  // Check if we have a valid API key
-  const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
-  if (!apiKey) {
-    console.log('No Perplexity API key found, using fallback city search');
-    return fallbackCitySearch(query);
-  }
-  
-  if (!query || query.trim().length < 2) {
-    console.log('Query too short, using fallback city search');
-    return fallbackCitySearch(query);
-  }
+export const searchCities = async (query: string): Promise<LocationOption[]> => {
+  console.log('Searching cities matching:', query);
   
   try {
-    // Build the prompts for Perplexity
-    const systemPrompt = 'You are a city and airport search API. Return ONLY valid JSON arrays of city information based on the search query. No explanations, just data.';
-    const userPrompt = `Search for cities and airports matching "${query}". 
-    Format the results as a structured JSON array of up to 10 cities.
-    Each city should include name and airport code.
-    Don't include any explanation, just return a valid JSON array that can be parsed with JSON.parse().
-    Format like this example:
-    [
-      {
-        "name": "New York",
-        "code": "NYC"
-      },
-      ...more similar objects
-    ]`;
-    
-    console.log('Making Perplexity request for city search');
-    
-    // Make the API request
-    const content = await makePerplexityRequest(systemPrompt, userPrompt);
-    
-    // Parse the JSON from the response
-    const citiesData = extractJsonFromResponse(content);
-    
-    if (!Array.isArray(citiesData) || citiesData.length === 0) {
-      console.error('Invalid cities data received:', citiesData);
+    // First check if we have API key
+    const apiKey = localStorage.getItem('PERPLEXITY_API_KEY');
+    if (!apiKey) {
+      console.log('No Perplexity API key found, using fallback data');
       return fallbackCitySearch(query);
     }
     
-    console.log('City search results:', citiesData);
+    // Make a request to the Perplexity API
+    const systemPrompt = 'You are a travel API that returns ONLY valid JSON arrays of city and airport information based on the query. No explanations, just data.';
+    const userPrompt = `Find airports and cities matching "${query}". Return results as a JSON array of objects, each with "code" (IATA airport code or city code) and "name" (full city/airport name with country).
+    Return only major airports and cities. For example:
+    [
+      {"code": "LAX", "name": "Los Angeles, USA"},
+      {"code": "LHR", "name": "London Heathrow, UK"},
+      {"code": "NYC", "name": "New York, USA"}
+    ]
+    Return exactly 5 results. Only valid JSON, no explanations.`;
     
-    // Transform the data if needed
-    const results = citiesData.map((city: any) => ({
-      name: city.name || 'Unknown City',
-      code: city.code || 'XXX'
-    }));
+    const content = await makePerplexityRequest(systemPrompt, userPrompt, 0.1, 1000);
+    const results = extractJsonFromResponse(content);
     
-    return results;
+    if (Array.isArray(results) && results.length > 0) {
+      // Save the AI-generated cities to localStorage for future use
+      saveLocationToLocalStorage(results);
+      return results;
+    } else {
+      console.log('Invalid results format, using fallback data');
+      return fallbackCitySearch(query);
+    }
   } catch (error) {
     console.error('Error searching cities:', error);
     return fallbackCitySearch(query);
   }
+};
+
+/**
+ * Save AI-generated city data to localStorage for future reference
+ */
+const saveLocationToLocalStorage = (locations: LocationOption[]) => {
+  try {
+    // Get existing saved locations
+    const savedLocationsString = localStorage.getItem('saved_locations');
+    let savedLocations: LocationOption[] = [];
+    
+    if (savedLocationsString) {
+      savedLocations = JSON.parse(savedLocationsString);
+    }
+    
+    // Add new locations, avoiding duplicates
+    for (const location of locations) {
+      if (!savedLocations.some(saved => saved.code === location.code)) {
+        savedLocations.push(location);
+      }
+    }
+    
+    // Save back to localStorage (limit to 50 locations to avoid storage issues)
+    localStorage.setItem('saved_locations', JSON.stringify(savedLocations.slice(0, 50)));
+  } catch (error) {
+    console.error('Error saving locations to localStorage:', error);
+  }
+};
+
+/**
+ * Get all saved locations from localStorage
+ */
+export const getSavedLocations = (): LocationOption[] => {
+  try {
+    const savedLocationsString = localStorage.getItem('saved_locations');
+    if (savedLocationsString) {
+      return JSON.parse(savedLocationsString);
+    }
+  } catch (error) {
+    console.error('Error retrieving saved locations:', error);
+  }
+  return [];
+};
+
+/**
+ * Fallback city search function when API fails
+ */
+export const fallbackCitySearch = (query: string): LocationOption[] => {
+  // First check saved locations from previous AI searches
+  const savedLocations = getSavedLocations();
+  if (savedLocations.length > 0) {
+    const filteredSaved = savedLocations.filter(location => 
+      location.name.toLowerCase().includes(query.toLowerCase()) || 
+      location.code.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    if (filteredSaved.length > 0) {
+      return filteredSaved.slice(0, 10);
+    }
+  }
+  
+  // Comprehensive list of major destinations
+  const allDestinations: LocationOption[] = [
+    { code: 'JFK', name: 'New York (JFK), USA' },
+    { code: 'LGA', name: 'New York (LaGuardia), USA' },
+    { code: 'EWR', name: 'Newark, USA' },
+    { code: 'LAX', name: 'Los Angeles, USA' },
+    { code: 'SFO', name: 'San Francisco, USA' },
+    { code: 'ORD', name: 'Chicago, USA' },
+    { code: 'MIA', name: 'Miami, USA' },
+    { code: 'DFW', name: 'Dallas, USA' },
+    { code: 'ATL', name: 'Atlanta, USA' },
+    { code: 'LAS', name: 'Las Vegas, USA' },
+    { code: 'BOS', name: 'Boston, USA' },
+    { code: 'SEA', name: 'Seattle, USA' },
+    { code: 'DEN', name: 'Denver, USA' },
+    { code: 'HNL', name: 'Honolulu, USA' },
+    { code: 'ANC', name: 'Anchorage, USA' },
+    { code: 'YYZ', name: 'Toronto, Canada' },
+    { code: 'YVR', name: 'Vancouver, Canada' },
+    { code: 'YUL', name: 'Montreal, Canada' },
+    { code: 'LHR', name: 'London, UK' },
+    { code: 'CDG', name: 'Paris, France' },
+    { code: 'FCO', name: 'Rome, Italy' },
+    { code: 'MAD', name: 'Madrid, Spain' },
+    { code: 'BCN', name: 'Barcelona, Spain' },
+    { code: 'AMS', name: 'Amsterdam, Netherlands' },
+    { code: 'FRA', name: 'Frankfurt, Germany' },
+    { code: 'MUC', name: 'Munich, Germany' },
+    { code: 'ZRH', name: 'Zurich, Switzerland' },
+    { code: 'VIE', name: 'Vienna, Austria' },
+    { code: 'SVO', name: 'Moscow, Russia' },
+    { code: 'DXB', name: 'Dubai, UAE' },
+    { code: 'DOH', name: 'Doha, Qatar' },
+    { code: 'SIN', name: 'Singapore' },
+    { code: 'BKK', name: 'Bangkok, Thailand' },
+    { code: 'HKG', name: 'Hong Kong' },
+    { code: 'PEK', name: 'Beijing, China' },
+    { code: 'PVG', name: 'Shanghai, China' },
+    { code: 'HND', name: 'Tokyo, Japan' },
+    { code: 'SYD', name: 'Sydney, Australia' },
+    { code: 'MEL', name: 'Melbourne, Australia' },
+    { code: 'AKL', name: 'Auckland, New Zealand' },
+    { code: 'GRU', name: 'São Paulo, Brazil' },
+    { code: 'EZE', name: 'Buenos Aires, Argentina' },
+    { code: 'MEX', name: 'Mexico City, Mexico' },
+    { code: 'JNB', name: 'Johannesburg, South Africa' },
+    { code: 'CPT', name: 'Cape Town, South Africa' },
+    { code: 'CAI', name: 'Cairo, Egypt' },
+    { code: 'NBO', name: 'Nairobi, Kenya' },
+    { code: 'DEL', name: 'Delhi, India' },
+    { code: 'BOM', name: 'Mumbai, India' }
+  ];
+  
+  if (!query || query.trim() === '') {
+    // Return first 10 destinations if no query
+    return allDestinations.slice(0, 10);
+  }
+  
+  // Filter destinations based on query
+  const lowerQuery = query.toLowerCase();
+  const filteredDestinations = allDestinations.filter(dest => 
+    dest.name.toLowerCase().includes(lowerQuery) || 
+    dest.code.toLowerCase().includes(lowerQuery)
+  );
+  
+  // Return matches, limited to 10 results
+  return filteredDestinations.slice(0, 10);
 };
