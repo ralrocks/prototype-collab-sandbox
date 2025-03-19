@@ -138,8 +138,11 @@ export const fetchHotels = async (
         hotelName.toLowerCase().includes(chain.toLowerCase())
       );
       
+      // Calculate id based on page and index to ensure uniqueness across pages
+      const id = (page - 1) * limit + index + 1;
+      
       return {
-        id: hotel.id || index + 1,
+        id: hotel.id || id,
         name: hotelName,
         price: typeof hotel.price === 'number' ? hotel.price : parseInt(hotel.price) || 150 + Math.floor(Math.random() * 200),
         rating: typeof hotel.rating === 'number' ? hotel.rating : parseFloat(hotel.rating) || 4.0,
