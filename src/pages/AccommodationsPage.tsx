@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -448,49 +449,14 @@ const AccommodationsPage = () => {
                             </div>
                             
                             <div className="flex items-center gap-2">
-                              <Drawer open={detailsOpen && selectedHotelForDetails?.id === hotel.id} onOpenChange={(open) => {
-                                if (open) {
-                                  setSelectedHotelForDetails(hotel);
-                                }
-                                setDetailsOpen(open);
-                              }}>
-                                <DrawerTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    className="flex items-center gap-1.5"
-                                    onClick={() => handleViewDetails(hotel)}
-                                  >
-                                    <ExternalLink size={14} /> Details
-                                  </Button>
-                                </DrawerTrigger>
-                                <DrawerContent className="max-h-[85vh] overflow-y-auto">
-                                  <DrawerHeader className="text-left">
-                                    <DrawerTitle>
-                                      <div className="flex justify-between items-center">
-                                        <span>{hotel.name}</span>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          className="h-8 w-8 p-0"
-                                          onClick={() => setDetailsOpen(false)}
-                                        >
-                                          <X size={16} />
-                                        </Button>
-                                      </div>
-                                    </DrawerTitle>
-                                  </DrawerHeader>
-                                  
-                                  <div className="px-4 pb-4">
-                                    <HotelDetails
-                                      detailsLoading={detailsLoading}
-                                      hotel={hotel}
-                                      additionalDetails={additionalDetails}
-                                      openBookingLink={openBookingLink}
-                                    />
-                                  </div>
-                                </DrawerContent>
-                              </Drawer>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="flex items-center gap-1.5"
+                                onClick={() => handleViewDetails(hotel)}
+                              >
+                                <ExternalLink size={14} /> Details
+                              </Button>
                               
                               <Button
                                 variant={isHousingSelected(hotel.id) ? "outline" : "default"}
@@ -574,32 +540,37 @@ const AccommodationsPage = () => {
         </div>
       </div>
 
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex justify-between items-center">
-              <span>{selectedHotelForDetails?.name}</span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0" 
-                onClick={() => setDetailsOpen(false)}
-              >
-                <X size={16} />
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
+      {/* Hotel Details Drawer */}
+      <Drawer open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DrawerContent className="max-h-[85vh] overflow-y-auto">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>
+              <div className="flex justify-between items-center">
+                <span>{selectedHotelForDetails?.name}</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0"
+                  onClick={() => setDetailsOpen(false)}
+                >
+                  <X size={16} />
+                </Button>
+              </div>
+            </DrawerTitle>
+          </DrawerHeader>
           
-          {selectedHotelForDetails && (
-            <HotelDetails
-              detailsLoading={detailsLoading}
-              hotel={selectedHotelForDetails}
-              additionalDetails={additionalDetails}
-              openBookingLink={openBookingLink}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+          <div className="px-4 pb-4">
+            {selectedHotelForDetails && (
+              <HotelDetails
+                detailsLoading={detailsLoading}
+                hotel={selectedHotelForDetails}
+                additionalDetails={additionalDetails}
+                openBookingLink={openBookingLink}
+              />
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </WebLayout>
   );
 };

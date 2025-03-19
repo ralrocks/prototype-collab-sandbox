@@ -117,7 +117,8 @@ export const fetchHotels = async (
     },
     ...
   ]
-  Return only the JSON array, no explanations.`;
+  Return only the JSON array, no explanations.
+  If you can't get exact real-time data, provide plausible hotel listings based on typical properties, amenities, and prices in ${city}.`;
   
   try {
     // Make the API request
@@ -145,7 +146,7 @@ export const fetchHotels = async (
       return {
         id: hotel.id || id,
         name: hotelName,
-        price: typeof hotel.price === 'number' ? hotel.price : parseInt(hotel.price) || 150 + Math.floor(Math.random() * 200),
+        price: typeof hotel.price === 'number' ? hotel.price : parseInt(hotel.price) || 199,
         rating: typeof hotel.rating === 'number' ? hotel.rating : parseFloat(hotel.rating) || 4.0,
         amenities: Array.isArray(hotel.amenities) ? hotel.amenities : ['Free WiFi', 'Breakfast'],
         image: getHotelImage(hotelName),

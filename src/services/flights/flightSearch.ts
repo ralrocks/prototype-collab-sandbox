@@ -1,3 +1,4 @@
+
 /**
  * Functions for searching flights and handling flight data
  */
@@ -5,7 +6,6 @@ import { Flight } from '@/types';
 import { makePerplexityRequest, extractJsonFromResponse } from '../api/perplexityClient';
 import { toast } from 'sonner';
 import { formatDateForDisplay } from './flightFormatters';
-import { createSyntheticFlights, createFlightsFromPartialData } from './syntheticFlights';
 
 /**
  * Function to search for flights using Perplexity AI
@@ -79,7 +79,8 @@ export const fetchFlights = async (
     }
   ]
   VERY IMPORTANT: For page ${page}, make sure to return DIFFERENT flights than previous pages.
-  ONLY return a valid, parseable JSON array. Do not include any text before or after the JSON. Do not use markdown formatting or code blocks. Just return the raw JSON array.`;
+  ONLY return a valid, parseable JSON array. Do not include any text before or after the JSON. Do not use markdown formatting or code blocks. Just return the raw JSON array.
+  If you can't get exact real-time data, generate plausible flight options based on typical routes, schedules, and prices between ${from} and ${to}.`;
   
   try {
     // Make the API request
@@ -90,28 +91,14 @@ export const fetchFlights = async (
     try {
       flightData = extractJsonFromResponse(content);
       console.log(`Successfully extracted flight data for page ${page}: ${flightData.length} flights found`);
+      
+      if (!Array.isArray(flightData) || flightData.length === 0) {
+        console.error(`Invalid or empty flight data received for page ${page}`);
+        throw new Error('No flight data available for this route and date. Please try a different search.');
+      }
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
-      
-      // If we're on page 1, create synthetic data as a fallback
-      if (page === 1) {
-        console.log('Using fallback synthetic data for page 1');
-        flightData = createSyntheticFlights(from, to, limit);
-        
-        // Still show toast for debugging purposes
-        toast.warning('Using fallback flight data', { 
-          description: 'We had trouble getting real-time flights. Showing example flights instead.' 
-        });
-      } else {
-        // For pages beyond 1, generate different synthetic data
-        console.log(`Using fallback synthetic data for page ${page}`);
-        flightData = createSyntheticFlights(from, to, limit, page);
-      }
-    }
-    
-    if (!Array.isArray(flightData) || flightData.length === 0) {
-      console.warn(`Invalid or empty flight data received for page ${page}, using fallback`);
-      flightData = createSyntheticFlights(from, to, limit, page);
+      throw new Error('Error processing flight data. Please try again.');
     }
     
     // Calculate base ID based on page to ensure uniqueness across pages
@@ -167,7 +154,7 @@ export const fetchFlights = async (
  */
 export const getFlightDetails = async (flight: Flight): Promise<any> => {
   if (!flight.details?.bookingLink) {
-    return null;
+    throw new Error('No booking link available for this flight');
   }
   
   // Check if we have a valid API key
