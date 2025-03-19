@@ -20,12 +20,13 @@ export {
 // Re-export city services
 export { 
   searchCities, 
-  getCityDetails, 
-  getPopularDestinations 
+  getSavedLocations,
+  fallbackCitySearch as getCityDetails,  // Using fallbackCitySearch as getCityDetails
+  fallbackCitySearch as getPopularDestinations // Using fallbackCitySearch as getPopularDestinations
 } from './cityService';
 
 // Re-export destination services
 export { 
-  getDestinations, 
-  getDestinationDetails 
+  getDestinationInfo as getDestinations,
+  getDestinationInfo as getDestinationDetails
 } from './destinationService';
