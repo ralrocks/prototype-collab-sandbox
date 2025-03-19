@@ -47,15 +47,15 @@ export const FlightBadges = ({
   };
 
   return (
-    <div className="border-t px-4 md:px-6 py-3 bg-gradient-to-r from-gray-50 to-blue-50 flex flex-wrap gap-3">
-      <Badge variant="outline" className="bg-white shadow-sm">
-        <Clock size={14} className="mr-1 text-blue-500" /> 
+    <div className="border-t px-4 md:px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 flex flex-wrap gap-3">
+      <Badge variant="outline" className="bg-white shadow-sm hover:bg-blue-50 transition-colors">
+        <Clock size={14} className="mr-1.5 text-blue-500" /> 
         {getFormattedTime(departureTime)} - {getFormattedTime(arrivalTime)}
       </Badge>
       
       {cabin && (
-        <Badge variant="outline" className="bg-white shadow-sm">
-          <Plane size={14} className="mr-1 text-blue-500" /> 
+        <Badge variant="outline" className="bg-white shadow-sm hover:bg-blue-50 transition-colors">
+          <Plane size={14} className="mr-1.5 text-blue-500" /> 
           {cabin.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
         </Badge>
       )}
@@ -63,10 +63,10 @@ export const FlightBadges = ({
       {stops !== undefined && (
         <Badge 
           variant="outline" 
-          className={`shadow-sm ${
+          className={`shadow-sm transition-colors ${
             stops === 0 
-              ? 'bg-green-50 text-green-700 border-green-200' 
-              : 'bg-amber-50 text-amber-700 border-amber-200'
+              ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
+              : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
           }`}
         >
           {stops === 0 ? 'Nonstop' : `${stops} stop${stops > 1 ? 's' : ''}`}
@@ -74,14 +74,14 @@ export const FlightBadges = ({
       )}
       
       {aircraft && (
-        <Badge variant="outline" className="bg-white shadow-sm">
-          <Info size={14} className="mr-1 text-blue-500" /> {aircraft}
+        <Badge variant="outline" className="bg-white shadow-sm hover:bg-blue-50 transition-colors">
+          <Info size={14} className="mr-1.5 text-blue-500" /> {aircraft}
         </Badge>
       )}
       
       {getFormattedDate(departureTime) && (
-        <Badge variant="outline" className="bg-white shadow-sm">
-          <Calendar size={14} className="mr-1 text-blue-500" /> 
+        <Badge variant="outline" className="bg-white shadow-sm hover:bg-blue-50 transition-colors">
+          <Calendar size={14} className="mr-1.5 text-blue-500" /> 
           {getFormattedDate(departureTime)}
         </Badge>
       )}

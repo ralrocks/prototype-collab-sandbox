@@ -1,3 +1,4 @@
+
 import { Loader2, Plane } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -32,29 +33,34 @@ const FlightsLoading = () => {
 
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4">
-      <div className="bg-blue-50 rounded-lg p-6 shadow-sm w-full max-w-md">
-        <div className="flex items-center justify-center mb-6">
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 shadow-md w-full max-w-md border border-blue-100">
+        <div className="flex items-center justify-center mb-8">
           <div className="relative">
-            <Loader2 size={48} className="animate-spin text-primary" />
-            <Plane size={24} className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-600" />
+            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
+              <Loader2 size={40} className="animate-spin text-blue-600" />
+            </div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-full p-1.5">
+              <Plane size={20} className="text-blue-600" />
+            </div>
           </div>
         </div>
         
-        <h3 className="text-center text-lg font-medium text-blue-800 mb-2">
-          {loadingMessage}{dots}
+        <h3 className="text-center text-lg font-medium text-blue-800 mb-3">
+          {loadingMessage}<span className="animate-pulse">{dots}</span>
         </h3>
         
-        <p className="text-center text-sm text-gray-600 mb-4">
+        <p className="text-center text-sm text-gray-600 mb-6">
           This may take a few moments while we find the best options for you
         </p>
         
-        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-          <div className="bg-blue-600 h-2.5 rounded-full animate-pulse w-3/4"></div>
+        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-2.5 rounded-full animate-pulse w-3/4"></div>
         </div>
         
-        <p className="text-center text-xs text-gray-500">
-          Powered by AI to find you the best deals
-        </p>
+        <div className="flex justify-between items-center text-xs text-gray-500 mt-6">
+          <p>Powered by AI to find you the best deals</p>
+          <p className="text-blue-500">Searching...</p>
+        </div>
       </div>
     </div>
   );

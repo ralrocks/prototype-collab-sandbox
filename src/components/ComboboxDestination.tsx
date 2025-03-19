@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -110,23 +110,30 @@ export function ComboboxDestination({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="w-full justify-between border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
         >
           {selectedValue || placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command>
+      <PopoverContent className="w-full p-0 shadow-lg border border-gray-200 rounded-md z-50" align="start">
+        <Command className="rounded-lg border-0">
           <CommandInput
             placeholder={placeholder}
             value={query}
             onValueChange={setQuery}
-            className="h-9"
+            className="h-10"
           />
-          <CommandList>
+          <CommandList className="max-h-[300px] overflow-auto">
             <CommandEmpty>
-              {loading ? 'Searching...' : 'No results found.'}
+              {loading ? (
+                <div className="flex items-center justify-center p-4 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-500" />
+                  Searching for locations...
+                </div>
+              ) : (
+                <p className="p-4 text-sm text-gray-500">No results found.</p>
+              )}
             </CommandEmpty>
             {savedLocations.length > 0 && query.length < 2 && (
               <CommandGroup heading="Recently Used">
@@ -138,14 +145,18 @@ export function ComboboxDestination({
                       onSelect(option);
                       setOpen(false);
                     }}
+                    className="flex items-center px-4 py-2 hover:bg-blue-50 cursor-pointer"
                   >
                     <Check
                       className={cn(
-                        "mr-2 h-4 w-4",
+                        "mr-2 h-4 w-4 text-blue-600",
                         selectedValue === option.name ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    {option.name} ({option.code})
+                    <div>
+                      <span className="font-medium">{option.name}</span>
+                      <span className="ml-2 text-sm text-gray-500">({option.code})</span>
+                    </div>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -159,14 +170,18 @@ export function ComboboxDestination({
                     onSelect(option);
                     setOpen(false);
                   }}
+                  className="flex items-center px-4 py-2 hover:bg-blue-50 cursor-pointer"
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 h-4 w-4 text-blue-600",
                       selectedValue === option.name ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option.name} ({option.code})
+                  <div>
+                    <span className="font-medium">{option.name}</span>
+                    <span className="ml-2 text-sm text-gray-500">({option.code})</span>
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>
