@@ -19,7 +19,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger
+} from "@/components/ui/drawer";
 import { HotelDetails } from '@/components/accommodations/HotelDetails';
 import HotelsLoading from '@/components/accommodations/HotelsLoading';
 
@@ -204,8 +210,14 @@ const AccommodationsPage = () => {
 
   const openBookingLink = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (selectedHotelForDetails) {
-      window.open(`https://www.google.com/search?q=${encodeURIComponent(selectedHotelForDetails.name + ' ' + selectedHotelForDetails.location)}`, '_blank');
+      const hotelUrl = additionalDetails?.websiteUrl 
+        ? additionalDetails.websiteUrl 
+        : `https://www.google.com/search?q=${encodeURIComponent(selectedHotelForDetails.name + ' ' + selectedHotelForDetails.location)}`;
+      
+      window.open(hotelUrl, '_blank');
+      toast.success('Opening hotel website in a new tab');
     }
   };
 
@@ -436,14 +448,49 @@ const AccommodationsPage = () => {
                             </div>
                             
                             <div className="flex items-center gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="flex items-center gap-1.5"
-                                onClick={() => handleViewDetails(hotel)}
-                              >
-                                <ExternalLink size={14} /> Details
-                              </Button>
+                              <Drawer open={detailsOpen && selectedHotelForDetails?.id === hotel.id} onOpenChange={(open) => {
+                                if (open) {
+                                  setSelectedHotelForDetails(hotel);
+                                }
+                                setDetailsOpen(open);
+                              }}>
+                                <DrawerTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="flex items-center gap-1.5"
+                                    onClick={() => handleViewDetails(hotel)}
+                                  >
+                                    <ExternalLink size={14} /> Details
+                                  </Button>
+                                </DrawerTrigger>
+                                <DrawerContent className="max-h-[85vh] overflow-y-auto">
+                                  <DrawerHeader className="text-left">
+                                    <DrawerTitle>
+                                      <div className="flex justify-between items-center">
+                                        <span>{hotel.name}</span>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="h-8 w-8 p-0"
+                                          onClick={() => setDetailsOpen(false)}
+                                        >
+                                          <X size={16} />
+                                        </Button>
+                                      </div>
+                                    </DrawerTitle>
+                                  </DrawerHeader>
+                                  
+                                  <div className="px-4 pb-4">
+                                    <HotelDetails
+                                      detailsLoading={detailsLoading}
+                                      hotel={hotel}
+                                      additionalDetails={additionalDetails}
+                                      openBookingLink={openBookingLink}
+                                    />
+                                  </div>
+                                </DrawerContent>
+                              </Drawer>
                               
                               <Button
                                 variant={isHousingSelected(hotel.id) ? "outline" : "default"}
