@@ -53,6 +53,7 @@ export const fetchFlights = async (
   // Build the prompt for Perplexity with simplified structure for better parsing
   const systemPrompt = 'You are a flight search API that provides real and accurate flight information. Return ONLY a valid JSON array of flight data with no additional text, comments, or markdown formatting.';
   const userPrompt = `Search for real ${tripType === 'roundtrip' ? 'round-trip' : 'one-way'} flights from ${from} to ${to} on ${formattedDepartureDate}${formattedReturnDate ? ` with return on ${formattedReturnDate}` : ''}. 
+  This should be page ${page} of results with ${limit} flights per page.
   Format the results as a JSON array of exactly ${limit} flight options with this exact structure:
   [
     {
@@ -92,36 +93,48 @@ export const fetchFlights = async (
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
       
-      // Create synthetic data as a fallback
-      console.log('Using fallback synthetic data');
-      flightData = createSyntheticFlights(from, to, 5);
-      
-      // Still show toast for debugging purposes
-      toast.warning('Using fallback flight data', { 
-        description: 'We had trouble getting real-time flights. Showing example flights instead.' 
-      });
+      // If we're on page 1, create synthetic data as a fallback
+      if (page === 1) {
+        console.log('Using fallback synthetic data');
+        flightData = createSyntheticFlights(from, to, limit);
+        
+        // Still show toast for debugging purposes
+        toast.warning('Using fallback flight data', { 
+          description: 'We had trouble getting real-time flights. Showing example flights instead.' 
+        });
+      } else {
+        // For subsequent pages, don't show data if we can't fetch it
+        return [];
+      }
     }
     
     if (!Array.isArray(flightData) || flightData.length === 0) {
       console.warn('Invalid or empty flight data received, using fallback');
-      flightData = createSyntheticFlights(from, to, 5);
+      if (page === 1) {
+        flightData = createSyntheticFlights(from, to, limit);
+      } else {
+        return [];
+      }
     }
+    
+    // Calculate base ID based on page to ensure uniqueness across pages
+    const baseId = (page - 1) * limit;
     
     // Transform the data to match our Flight type
     return flightData.map((flight: any, index: number) => ({
-      id: flight.id || index + 1,
+      id: flight.id || baseId + index + 1,
       attribute: flight.airline || 'Unknown Airline',
       question1: `${from} → ${to} (${new Date(flight.departureTime || new Date()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(flight.arrivalTime || new Date(Date.now() + 3 * 60 * 60 * 1000)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`,
       price: typeof flight.price === 'number' ? flight.price : Math.floor(200 + Math.random() * 300),
       tripType: tripType,
       details: {
-        flightNumber: flight.flightNumber || `FL${1000 + index}`,
+        flightNumber: flight.flightNumber || `FL${1000 + baseId + index}`,
         duration: flight.duration || 'PT3H00M',
         departureTime: flight.departureTime || new Date().toISOString(),
         arrivalTime: flight.arrivalTime || new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
         cabin: flight.cabin || 'ECONOMY',
         stops: typeof flight.stops === 'number' ? flight.stops : 0,
-        airline: flight.airline || `Airline ${index + 1}`,
+        airline: flight.airline || `Airline ${baseId + index + 1}`,
         departureAirport: from,
         arrivalAirport: to,
         aircraft: flight.aircraft || 'Boeing 737',

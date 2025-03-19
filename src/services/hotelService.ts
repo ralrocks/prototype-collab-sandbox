@@ -103,15 +103,16 @@ export const fetchHotels = async (
   ${filterDescription ? `Filter requirements: ${filterDescription}` : ''}
   Include major hotel chains such as Marriott, Hilton, Hyatt, InterContinental, Holiday Inn, Sheraton, and other well-known brands.
   Return results as a JSON array with each hotel having: id, name, price (per night in USD), rating (out of 5), amenities (array of strings), location, and a brief description.
+  This should be page ${page} of results with ${limit} hotels per page.
   Example format:
   [
     {
-      "id": 1,
+      "id": ${(page - 1) * limit + 1},
       "name": "Grand Plaza Hotel Marriott",
       "price": 199,
       "rating": 4.5,
       "amenities": ["Free WiFi", "Pool", "Spa", "Fitness Center", "Restaurant"],
-      "location": "Downtown Chicago",
+      "location": "Downtown ${city}",
       "description": "Luxury hotel in the heart of downtown with stunning city views."
     },
     ...

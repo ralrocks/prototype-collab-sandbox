@@ -19,11 +19,13 @@ export const useFlightSearch = () => {
   const departureDate = localStorage.getItem('departureDate') || '';
   
   const loadMoreFlights = useCallback(async () => {
+    console.log('loadMoreFlights called', { loadingMore, hasMore });
     if (loadingMore || !hasMore) return;
     
     try {
       setLoadingMore(true);
       const nextPage = page + 1;
+      console.log('Fetching more flights for page:', nextPage);
       
       const newFlights = await fetchFlights(
         from, 
@@ -31,8 +33,11 @@ export const useFlightSearch = () => {
         departureDate, 
         undefined, 
         'oneway',
-        nextPage
+        nextPage,
+        10
       );
+      
+      console.log('Received new flights:', newFlights.length);
       
       if (newFlights.length === 0) {
         setHasMore(false);
@@ -55,7 +60,7 @@ export const useFlightSearch = () => {
       
       console.log('Fetching outbound flights from:', from, 'to:', to, 'on:', departureDate);
       
-      const outboundFlightsData = await fetchFlights(from, to, departureDate, undefined, 'oneway', 1);
+      const outboundFlightsData = await fetchFlights(from, to, departureDate, undefined, 'oneway', 1, 10);
       console.log('Outbound flights received:', outboundFlightsData.length);
       
       setOutboundFlights(outboundFlightsData);

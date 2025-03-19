@@ -40,23 +40,28 @@ const FlightList = ({
     }
     
     // Create a new intersection observer for infinite scrolling
-    if (onLoadMore && hasMore) {
+    if (onLoadMore && hasMore && !loading) {
+      console.log('Setting up intersection observer for flights');
       const newObserver = new IntersectionObserver(
         (entries) => {
+          console.log('Intersection observed:', entries[0].isIntersecting, 'loading:', loading, 'hasMore:', hasMore);
           if (entries[0].isIntersecting && !loading && hasMore) {
+            console.log('Triggering load more flights');
             onLoadMore();
           }
         },
-        { threshold: 0.5 }
+        { threshold: 0.1, rootMargin: '100px' }
       );
       
       if (loadMoreRef.current) {
+        console.log('Observing load more element');
         newObserver.observe(loadMoreRef.current);
       }
       
       setObserver(newObserver);
       
       return () => {
+        console.log('Disconnecting flight list observer');
         newObserver.disconnect();
       };
     }
@@ -101,14 +106,21 @@ const FlightList = ({
         </Card>
       )}
       
-      {hasMore && !loading && (
+      {hasMore && (
         <div ref={loadMoreRef} className="py-4 text-center">
           <Button 
             variant="outline" 
             onClick={onLoadMore}
             className="w-full max-w-xs mx-auto"
+            disabled={loading}
           >
-            Load More Flights
+            {loading ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            ) : 'Load More Flights'}
           </Button>
         </div>
       )}
