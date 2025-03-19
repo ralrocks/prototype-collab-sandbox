@@ -31,36 +31,35 @@ const FlightList = ({
 }: FlightListProps) => {
   const navigate = useNavigate();
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [observer, setObserver] = useState<IntersectionObserver | null>(null);
   
   useEffect(() => {
-    if (!onLoadMore || !hasMore || loading) {
-      return;
-    }
-    
-    const observer = new IntersectionObserver(
-      (entries) => {
-        console.log('Flight list intersection observed:', entries[0].isIntersecting, 'loading:', loading, 'hasMore:', hasMore);
-        if (entries[0].isIntersecting && !loading && hasMore) {
-          console.log('Triggering load more flights from observer');
-          onLoadMore();
-        }
-      },
-      { threshold: 0.1, rootMargin: '200px' }
-    );
-    
-    const currentRef = loadMoreRef.current;
-    if (currentRef) {
-      console.log('Observing flight list load more element');
-      observer.observe(currentRef);
-    }
-    
-    return () => {
-      console.log('Disconnecting flight list observer');
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
+    // Clean up previous observer
+    if (observer) {
       observer.disconnect();
-    };
+    }
+    
+    // Create a new intersection observer for infinite scrolling
+    if (onLoadMore && hasMore) {
+      const newObserver = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && !loading && hasMore) {
+            onLoadMore();
+          }
+        },
+        { threshold: 0.5 }
+      );
+      
+      if (loadMoreRef.current) {
+        newObserver.observe(loadMoreRef.current);
+      }
+      
+      setObserver(newObserver);
+      
+      return () => {
+        newObserver.disconnect();
+      };
+    }
   }, [onLoadMore, hasMore, loading, flights.length]);
   
   if (flights.length === 0 && !loading) {
@@ -102,22 +101,14 @@ const FlightList = ({
         </Card>
       )}
       
-      {/* This div is used as the intersection target */}
-      {hasMore && (
-        <div ref={loadMoreRef} className="py-4 text-center h-20">
+      {hasMore && !loading && (
+        <div ref={loadMoreRef} className="py-4 text-center">
           <Button 
             variant="outline" 
             onClick={onLoadMore}
             className="w-full max-w-xs mx-auto"
-            disabled={loading}
           >
-            {loading ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-            ) : 'Load More Flights'}
+            Load More Flights
           </Button>
         </div>
       )}

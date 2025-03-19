@@ -103,22 +103,20 @@ export const fetchHotels = async (
   ${filterDescription ? `Filter requirements: ${filterDescription}` : ''}
   Include major hotel chains such as Marriott, Hilton, Hyatt, InterContinental, Holiday Inn, Sheraton, and other well-known brands.
   Return results as a JSON array with each hotel having: id, name, price (per night in USD), rating (out of 5), amenities (array of strings), location, and a brief description.
-  This should be page ${page} of results with ${limit} hotels per page.
   Example format:
   [
     {
-      "id": ${(page - 1) * limit + 1},
+      "id": 1,
       "name": "Grand Plaza Hotel Marriott",
       "price": 199,
       "rating": 4.5,
       "amenities": ["Free WiFi", "Pool", "Spa", "Fitness Center", "Restaurant"],
-      "location": "Downtown ${city}",
+      "location": "Downtown Chicago",
       "description": "Luxury hotel in the heart of downtown with stunning city views."
     },
     ...
   ]
-  Return only the JSON array, no explanations.
-  If you can't get exact real-time data, provide plausible hotel listings based on typical properties, amenities, and prices in ${city}.`;
+  Return only the JSON array, no explanations.`;
   
   try {
     // Make the API request
@@ -140,13 +138,10 @@ export const fetchHotels = async (
         hotelName.toLowerCase().includes(chain.toLowerCase())
       );
       
-      // Calculate id based on page and index to ensure uniqueness across pages
-      const id = (page - 1) * limit + index + 1;
-      
       return {
-        id: hotel.id || id,
+        id: hotel.id || index + 1,
         name: hotelName,
-        price: typeof hotel.price === 'number' ? hotel.price : parseInt(hotel.price) || 199,
+        price: typeof hotel.price === 'number' ? hotel.price : parseInt(hotel.price) || 150 + Math.floor(Math.random() * 200),
         rating: typeof hotel.rating === 'number' ? hotel.rating : parseFloat(hotel.rating) || 4.0,
         amenities: Array.isArray(hotel.amenities) ? hotel.amenities : ['Free WiFi', 'Breakfast'],
         image: getHotelImage(hotelName),

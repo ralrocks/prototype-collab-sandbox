@@ -6,6 +6,7 @@ import { Flight } from '@/types';
 import { makePerplexityRequest, extractJsonFromResponse } from '../api/perplexityClient';
 import { toast } from 'sonner';
 import { formatDateForDisplay } from './flightFormatters';
+import { createSyntheticFlights, createFlightsFromPartialData } from './syntheticFlights';
 
 /**
  * Function to search for flights using Perplexity AI
@@ -52,8 +53,7 @@ export const fetchFlights = async (
   // Build the prompt for Perplexity with simplified structure for better parsing
   const systemPrompt = 'You are a flight search API that provides real and accurate flight information. Return ONLY a valid JSON array of flight data with no additional text, comments, or markdown formatting.';
   const userPrompt = `Search for real ${tripType === 'roundtrip' ? 'round-trip' : 'one-way'} flights from ${from} to ${to} on ${formattedDepartureDate}${formattedReturnDate ? ` with return on ${formattedReturnDate}` : ''}. 
-  This should be page ${page} of results with ${limit} flights per page.
-  Format the results as a JSON array of EXACTLY ${limit} flight options with this exact structure:
+  Format the results as a JSON array of exactly ${limit} flight options with this exact structure:
   [
     {
       "airline": "Delta Air Lines",
@@ -78,9 +78,7 @@ export const fetchFlights = async (
       }
     }
   ]
-  VERY IMPORTANT: For page ${page}, make sure to return DIFFERENT flights than previous pages.
-  ONLY return a valid, parseable JSON array. Do not include any text before or after the JSON. Do not use markdown formatting or code blocks. Just return the raw JSON array.
-  If you can't get exact real-time data, generate plausible flight options based on typical routes, schedules, and prices between ${from} and ${to}.`;
+  ONLY return a valid, parseable JSON array. Do not include any text before or after the JSON. Do not use markdown formatting or code blocks. Just return the raw JSON array.`;
   
   try {
     // Make the API request
@@ -90,35 +88,40 @@ export const fetchFlights = async (
     let flightData;
     try {
       flightData = extractJsonFromResponse(content);
-      console.log(`Successfully extracted flight data for page ${page}: ${flightData.length} flights found`);
-      
-      if (!Array.isArray(flightData) || flightData.length === 0) {
-        console.error(`Invalid or empty flight data received for page ${page}`);
-        throw new Error('No flight data available for this route and date. Please try a different search.');
-      }
+      console.log(`Successfully extracted flight data: ${flightData.length} flights found`);
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
-      throw new Error('Error processing flight data. Please try again.');
+      
+      // Create synthetic data as a fallback
+      console.log('Using fallback synthetic data');
+      flightData = createSyntheticFlights(from, to, 5);
+      
+      // Still show toast for debugging purposes
+      toast.warning('Using fallback flight data', { 
+        description: 'We had trouble getting real-time flights. Showing example flights instead.' 
+      });
     }
     
-    // Calculate base ID based on page to ensure uniqueness across pages
-    const baseId = (page - 1) * limit;
+    if (!Array.isArray(flightData) || flightData.length === 0) {
+      console.warn('Invalid or empty flight data received, using fallback');
+      flightData = createSyntheticFlights(from, to, 5);
+    }
     
     // Transform the data to match our Flight type
     return flightData.map((flight: any, index: number) => ({
-      id: flight.id || baseId + index + 1,
+      id: flight.id || index + 1,
       attribute: flight.airline || 'Unknown Airline',
       question1: `${from} → ${to} (${new Date(flight.departureTime || new Date()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(flight.arrivalTime || new Date(Date.now() + 3 * 60 * 60 * 1000)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`,
       price: typeof flight.price === 'number' ? flight.price : Math.floor(200 + Math.random() * 300),
       tripType: tripType,
       details: {
-        flightNumber: flight.flightNumber || `FL${1000 + baseId + index}`,
+        flightNumber: flight.flightNumber || `FL${1000 + index}`,
         duration: flight.duration || 'PT3H00M',
         departureTime: flight.departureTime || new Date().toISOString(),
         arrivalTime: flight.arrivalTime || new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
         cabin: flight.cabin || 'ECONOMY',
         stops: typeof flight.stops === 'number' ? flight.stops : 0,
-        airline: flight.airline || `Airline ${baseId + index + 1}`,
+        airline: flight.airline || `Airline ${index + 1}`,
         departureAirport: from,
         arrivalAirport: to,
         aircraft: flight.aircraft || 'Boeing 737',
@@ -154,7 +157,7 @@ export const fetchFlights = async (
  */
 export const getFlightDetails = async (flight: Flight): Promise<any> => {
   if (!flight.details?.bookingLink) {
-    throw new Error('No booking link available for this flight');
+    return null;
   }
   
   // Check if we have a valid API key

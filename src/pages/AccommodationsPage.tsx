@@ -1,15 +1,14 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2, Filter, ArrowLeft, ExternalLink, X } from 'lucide-react';
+import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2, Filter, ArrowLeft } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { useBookingStore } from '@/stores/bookingStore';
 import { fetchHotels } from '@/services/travelApi';
-import { getHotelDetails } from '@/services/hotelDetailService';
 import { Hotel } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,15 +19,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { 
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger
-} from "@/components/ui/drawer";
-import { HotelDetails } from '@/components/accommodations/HotelDetails';
-import HotelsLoading from '@/components/accommodations/HotelsLoading';
 
 interface HousingOption {
   id: number;
@@ -53,31 +43,24 @@ const AccommodationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [page, setPage] = useState<number>(1);
-  const [hasMore, setHasMore] = useState<boolean>(true);
-  const [loadingMore, setLoadingMore] = useState<boolean>(false);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  
+  // Filter states
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const [minRating, setMinRating] = useState<number>(0);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-
-  const [selectedHotelForDetails, setSelectedHotelForDetails] = useState<Hotel | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [additionalDetails, setAdditionalDetails] = useState<any>(null);
 
   const amenitiesList = [
     "Free WiFi", "Pool", "Spa", "Restaurant", "Gym", "Breakfast", "Bar", "Parking"
   ];
 
   useEffect(() => {
+    // Redirect if hotels should be skipped
     if (skipHotels) {
       navigate('/checkout');
       return;
     }
     
+    // Redirect if no flight is selected
     if (!selectedOutboundFlight) {
       toast.error("Please select a flight first");
       navigate('/flights');
@@ -91,6 +74,7 @@ const AccommodationsPage = () => {
         const toName = localStorage.getItem('toLocationName') || 'New York';
         const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
         
+        // Calculate a return date based on user selection or default to 5 days
         let returnDate;
         if (isRoundTrip && localStorage.getItem('returnDate')) {
           returnDate = localStorage.getItem('returnDate');
@@ -101,20 +85,17 @@ const AccommodationsPage = () => {
           returnDate = returnObj.toISOString().split('T')[0];
         }
         
+        // Define filters
         const filters = {
           minPrice: priceRange[0],
           maxPrice: priceRange[1],
           minRating: minRating,
-          amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
-          page: 1,
-          limit: 10
+          amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined
         };
         
         const hotelData = await fetchHotels(toName, departureDate, returnDate || '', filters);
         setHotels(hotelData);
         setFilteredHotels(hotelData);
-        setPage(1);
-        setHasMore(hotelData.length >= 10);
         setError(null);
       } catch (err) {
         console.error('Error fetching hotels:', err);
@@ -128,25 +109,7 @@ const AccommodationsPage = () => {
     fetchHotelData();
   }, [selectedOutboundFlight, navigate, priceRange, minRating, selectedAmenities, isRoundTrip, skipHotels]);
 
-  useEffect(() => {
-    if (selectedHotelForDetails && detailsOpen) {
-      const loadHotelDetails = async () => {
-        setDetailsLoading(true);
-        try {
-          const details = await getHotelDetails(selectedHotelForDetails);
-          setAdditionalDetails(details);
-        } catch (error) {
-          console.error('Error loading hotel details:', error);
-          toast.error('Failed to load detailed hotel information');
-        } finally {
-          setDetailsLoading(false);
-        }
-      };
-      
-      loadHotelDetails();
-    }
-  }, [selectedHotelForDetails, detailsOpen]);
-
+  // Convert Hotel objects to HousingOption format for compatibility with existing bookingStore
   const convertToHousingOption = (hotel: Hotel): HousingOption => {
     return {
       id: hotel.id,
@@ -196,11 +159,6 @@ const AccommodationsPage = () => {
     );
   };
 
-  const handleViewDetails = (hotel: Hotel) => {
-    setSelectedHotelForDetails(hotel);
-    setDetailsOpen(true);
-  };
-
   const renderAmenityIcon = (amenity: string) => {
     if (amenity.toLowerCase().includes('wifi')) return <Wifi size={16} className="mr-1" />;
     if (amenity.toLowerCase().includes('breakfast')) return <Coffee size={16} className="mr-1" />;
@@ -209,88 +167,15 @@ const AccommodationsPage = () => {
     return null;
   };
 
-  const openBookingLink = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (selectedHotelForDetails) {
-      const hotelUrl = additionalDetails?.websiteUrl 
-        ? additionalDetails.websiteUrl 
-        : `https://www.google.com/search?q=${encodeURIComponent(selectedHotelForDetails.name + ' ' + selectedHotelForDetails.location)}`;
-      
-      window.open(hotelUrl, '_blank');
-      toast.success('Opening hotel website in a new tab');
-    }
-  };
-
-  const loadMoreHotels = async () => {
-    if (loadingMore || !hasMore) return;
-    
-    try {
-      setLoadingMore(true);
-      const nextPage = page + 1;
-      const to = localStorage.getItem('toLocation') || 'JFK';
-      const toName = localStorage.getItem('toLocationName') || 'New York';
-      const departureDate = localStorage.getItem('departureDate') || '2023-12-10';
-      
-      let returnDate;
-      if (isRoundTrip && localStorage.getItem('returnDate')) {
-        returnDate = localStorage.getItem('returnDate');
-      } else {
-        const departureObj = new Date(departureDate);
-        const returnObj = new Date(departureObj);
-        returnObj.setDate(departureObj.getDate() + 5);
-        returnDate = returnObj.toISOString().split('T')[0];
-      }
-      
-      const filters = {
-        minPrice: priceRange[0],
-        maxPrice: priceRange[1],
-        minRating: minRating,
-        amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
-        page: nextPage,
-        limit: 10
-      };
-      
-      const newHotels = await fetchHotels(toName, departureDate, returnDate || '', filters);
-      
-      if (newHotels.length === 0) {
-        setHasMore(false);
-      } else {
-        setHotels(prev => [...prev, ...newHotels]);
-        setFilteredHotels(prev => [...prev, ...newHotels]);
-        setPage(nextPage);
-      }
-    } catch (err) {
-      console.error('Error loading more hotels:', err);
-      toast.error('Failed to load more hotels');
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loadingMore && hasMore) {
-          loadMoreHotels();
-        }
-      },
-      { threshold: 0.5 }
-    );
-    
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
-    }
-    
-    return () => {
-      observer.disconnect();
-    };
-  }, [loadingMore, hasMore, filteredHotels.length]);
-
   if (loading) {
     return (
       <WebLayout title="Loading Accommodations..." showBackButton>
-        <HotelsLoading />
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 size={48} className="animate-spin text-primary mb-4" />
+          <p className="text-center text-gray-600">
+            Searching for the best accommodations in your destination...
+          </p>
+        </div>
       </WebLayout>
     );
   }
@@ -393,119 +278,80 @@ const AccommodationsPage = () => {
                 <p className="text-gray-500">No hotels match your filter criteria. Try adjusting your filters.</p>
               </div>
             ) : (
-              <>
-                {filteredHotels.map((hotel) => (
-                  <Card 
-                    key={hotel.id} 
-                    className={`hover:shadow-md transition-all ${
-                      isHousingSelected(hotel.id) ? 'border-2 border-green-500' : ''
-                    }`}
-                  >
-                    <CardContent className="p-0">
-                      <div className="flex flex-col md:flex-row">
-                        <div className="md:w-1/3 h-48 md:h-auto bg-gray-200 relative overflow-hidden">
-                          {hotel.image ? (
-                            <img 
-                              src={hotel.image} 
-                              alt={hotel.name} 
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <p className="text-gray-400">No image</p>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="p-4 md:p-6 md:w-2/3 flex flex-col justify-between">
-                          <div>
-                            <div className="flex justify-between items-start mb-2">
-                              <h3 className="text-lg font-semibold">{hotel.name}</h3>
-                              <div className="flex items-center">
-                                <Star size={16} className="text-yellow-400 fill-yellow-400 mr-1" />
-                                <span>{hotel.rating}</span>
-                              </div>
-                            </div>
-                            
-                            <p className="text-gray-600 mb-4">{hotel.location}</p>
-                            
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {hotel.amenities.map((amenity, idx) => (
-                                <span 
-                                  key={idx} 
-                                  className="bg-gray-100 text-gray-800 text-xs py-1 px-2 rounded-full flex items-center"
-                                >
-                                  {renderAmenityIcon(amenity)}
-                                  {amenity}
-                                </span>
-                              ))}
+              filteredHotels.map((hotel) => (
+                <Card 
+                  key={hotel.id} 
+                  className={`hover:shadow-md transition-all ${
+                    isHousingSelected(hotel.id) ? 'border-2 border-green-500' : ''
+                  }`}
+                >
+                  <CardContent className="p-0">
+                    <div className="flex flex-col md:flex-row">
+                      <div className="md:w-1/3 h-48 md:h-auto bg-gray-200 relative overflow-hidden">
+                        {hotel.image ? (
+                          <img 
+                            src={hotel.image} 
+                            alt={hotel.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <p className="text-gray-400">No image</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="p-4 md:p-6 md:w-2/3 flex flex-col justify-between">
+                        <div>
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="text-lg font-semibold">{hotel.name}</h3>
+                            <div className="flex items-center">
+                              <Star size={16} className="text-yellow-400 fill-yellow-400 mr-1" />
+                              <span>{hotel.rating}</span>
                             </div>
                           </div>
                           
-                          <div className="flex items-center justify-between mt-4">
-                            <div>
-                              <span className="text-lg font-bold">${hotel.price}</span>
-                              <span className="text-gray-600 text-sm"> / night</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="flex items-center gap-1.5"
-                                onClick={() => handleViewDetails(hotel)}
+                          <p className="text-gray-600 mb-4">{hotel.location}</p>
+                          
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {hotel.amenities.map((amenity, idx) => (
+                              <span 
+                                key={idx} 
+                                className="bg-gray-100 text-gray-800 text-xs py-1 px-2 rounded-full flex items-center"
                               >
-                                <ExternalLink size={14} /> Details
-                              </Button>
-                              
-                              <Button
-                                variant={isHousingSelected(hotel.id) ? "outline" : "default"}
-                                size="sm"
-                                onClick={() => handleHousingToggle(hotel)}
-                                className={isHousingSelected(hotel.id) 
-                                  ? "border-green-500 text-green-700" 
-                                  : "bg-blue-600"}
-                              >
-                                {isHousingSelected(hotel.id) ? (
-                                  <>
-                                    <Check size={14} className="mr-1.5" /> Selected
-                                  </>
-                                ) : (
-                                  'Select'
-                                )}
-                              </Button>
-                            </div>
+                                {renderAmenityIcon(amenity)}
+                                {amenity}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between mt-4">
+                          <div>
+                            <span className="text-lg font-bold">${hotel.price}</span>
+                            <span className="text-gray-600 text-sm"> / night</span>
+                          </div>
+                          
+                          <div className="flex items-center">
+                            <Checkbox
+                              id={`hotel-${hotel.id}`}
+                              checked={isHousingSelected(hotel.id)}
+                              onCheckedChange={() => handleHousingToggle(hotel)}
+                              className="mr-2"
+                            />
+                            <label 
+                              htmlFor={`hotel-${hotel.id}`}
+                              className="text-sm cursor-pointer"
+                            >
+                              {isHousingSelected(hotel.id) ? 'Selected' : 'Select'}
+                            </label>
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {loadingMore && (
-                  <Card>
-                    <CardContent className="p-6 flex justify-center">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {hasMore && (
-                  <div ref={loadMoreRef} className="py-4 text-center">
-                    <Button 
-                      variant="outline" 
-                      onClick={loadMoreHotels}
-                      className="w-full max-w-xs mx-auto"
-                    >
-                      Load More Hotels
-                    </Button>
-                  </div>
-                )}
-              </>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </div>
         </div>
@@ -539,38 +385,6 @@ const AccommodationsPage = () => {
           </div>
         </div>
       </div>
-
-      {/* Hotel Details Drawer */}
-      <Drawer open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DrawerContent className="max-h-[85vh] overflow-y-auto">
-          <DrawerHeader className="text-left">
-            <DrawerTitle>
-              <div className="flex justify-between items-center">
-                <span>{selectedHotelForDetails?.name}</span>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0"
-                  onClick={() => setDetailsOpen(false)}
-                >
-                  <X size={16} />
-                </Button>
-              </div>
-            </DrawerTitle>
-          </DrawerHeader>
-          
-          <div className="px-4 pb-4">
-            {selectedHotelForDetails && (
-              <HotelDetails
-                detailsLoading={detailsLoading}
-                hotel={selectedHotelForDetails}
-                additionalDetails={additionalDetails}
-                openBookingLink={openBookingLink}
-              />
-            )}
-          </div>
-        </DrawerContent>
-      </Drawer>
     </WebLayout>
   );
 };
