@@ -1,14 +1,14 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2, Filter, ArrowLeft } from 'lucide-react';
+import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2, Filter, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { useBookingStore } from '@/stores/bookingStore';
-import { fetchHotels } from '@/services/travelApi';
+import { fetchHotels } from '@/services/hotels/hotelService';
 import { Hotel } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { HotelDetails } from '@/components/accommodations/HotelDetails';
+import HotelsLoading from '@/components/accommodations/HotelsLoading';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface HousingOption {
   id: number;
@@ -42,6 +45,8 @@ const AccommodationsPage = () => {
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedHotelId, setExpandedHotelId] = useState<number | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   
   // Filter states
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
@@ -138,6 +143,19 @@ const AccommodationsPage = () => {
     }
   };
 
+  const toggleDetails = (hotelId: number) => {
+    if (expandedHotelId === hotelId) {
+      setExpandedHotelId(null);
+    } else {
+      setExpandedHotelId(hotelId);
+      setDetailsLoading(true);
+      // Simulate loading of details
+      setTimeout(() => {
+        setDetailsLoading(false);
+      }, 800);
+    }
+  };
+
   const handleContinue = () => {
     if (selectedHousing.length === 0) {
       toast.error("Please select at least one accommodation!");
@@ -170,11 +188,8 @@ const AccommodationsPage = () => {
   if (loading) {
     return (
       <WebLayout title="Loading Accommodations..." showBackButton>
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 size={48} className="animate-spin text-primary mb-4" />
-          <p className="text-center text-gray-600">
-            Searching for the best accommodations in your destination...
-          </p>
+        <div className="max-w-4xl mx-auto">
+          <HotelsLoading />
         </div>
       </WebLayout>
     );
@@ -314,7 +329,7 @@ const AccommodationsPage = () => {
                           <p className="text-gray-600 mb-4">{hotel.location}</p>
                           
                           <div className="flex flex-wrap gap-2 mb-4">
-                            {hotel.amenities.map((amenity, idx) => (
+                            {hotel.amenities.slice(0, 4).map((amenity, idx) => (
                               <span 
                                 key={idx} 
                                 className="bg-gray-100 text-gray-800 text-xs py-1 px-2 rounded-full flex items-center"
@@ -323,6 +338,11 @@ const AccommodationsPage = () => {
                                 {amenity}
                               </span>
                             ))}
+                            {hotel.amenities.length > 4 && (
+                              <span className="bg-gray-100 text-gray-800 text-xs py-1 px-2 rounded-full">
+                                +{hotel.amenities.length - 4} more
+                              </span>
+                            )}
                           </div>
                         </div>
                         
@@ -332,7 +352,7 @@ const AccommodationsPage = () => {
                             <span className="text-gray-600 text-sm"> / night</span>
                           </div>
                           
-                          <div className="flex items-center">
+                          <div className="flex items-center space-x-2">
                             <Checkbox
                               id={`hotel-${hotel.id}`}
                               checked={isHousingSelected(hotel.id)}
@@ -349,6 +369,35 @@ const AccommodationsPage = () => {
                         </div>
                       </div>
                     </div>
+                    
+                    <Collapsible 
+                      open={expandedHotelId === hotel.id} 
+                      onOpenChange={() => toggleDetails(hotel.id)}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full border-t border-gray-200 flex items-center justify-center py-2 hover:bg-gray-50"
+                        >
+                          {expandedHotelId === hotel.id ? (
+                            <>
+                              <ChevronUp size={16} className="mr-1 text-gray-500" /> Hide details
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown size={16} className="mr-1 text-gray-500" /> Show more details
+                            </>
+                          )}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="bg-gray-50 p-4 border-t border-gray-200">
+                        <HotelDetails 
+                          hotel={hotel} 
+                          detailsLoading={detailsLoading}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
                   </CardContent>
                 </Card>
               ))

@@ -1,24 +1,31 @@
 
 /**
- * Export all travel-related API functions from their respective modules
+ * This file re-exports all travel-related service functions for easier import
  */
 
-// Re-export functions from flight service
+// Re-export flight services
 export { 
   fetchFlights, 
-  getFlightDetails 
+  getFlightDetails,
+  formatDateForDisplay, 
+  formatDuration 
 } from './flights';
 
-export {
-  formatDateForDisplay,
-  formatDuration
-} from './flights/flightFormatters';
+// Re-export hotel services
+export { 
+  fetchHotels,
+  getHotelDetails 
+} from './hotels/hotelService';
 
-// Re-export functions from city service
-export { searchCities, fallbackCitySearch, getSavedLocations } from './cityService';
+// Re-export city services
+export { 
+  searchCities, 
+  getCityDetails, 
+  getPopularDestinations 
+} from './cityService';
 
-// Re-export functions from destination service
-export { getDestinationInfo } from './destinationService';
-
-// Re-export functions from hotel service
-export { fetchHotels, getAvailableHotelChains } from './hotelService';
+// Re-export destination services
+export { 
+  getDestinations, 
+  getDestinationDetails 
+} from './destinationService';
