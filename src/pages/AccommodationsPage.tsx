@@ -2,13 +2,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2, Filter, ArrowLeft } from 'lucide-react';
+import { Check, Star, Wifi, Coffee, Utensils, Dumbbell, ArrowRight, Loader2, Filter, ArrowLeft, ExternalLink, X } from 'lucide-react';
 import WebLayout from '@/components/WebLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { useBookingStore } from '@/stores/bookingStore';
 import { fetchHotels } from '@/services/travelApi';
+import { getHotelDetails } from '@/services/hotelDetailService';
 import { Hotel } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +20,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { HotelDetails } from '@/components/accommodations/HotelDetails';
+import HotelsLoading from '@/components/accommodations/HotelsLoading';
 
 interface HousingOption {
   id: number;
@@ -48,6 +52,12 @@ const AccommodationsPage = () => {
   const [minRating, setMinRating] = useState<number>(0);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Hotel details states
+  const [selectedHotelForDetails, setSelectedHotelForDetails] = useState<Hotel | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [additionalDetails, setAdditionalDetails] = useState<any>(null);
 
   const amenitiesList = [
     "Free WiFi", "Pool", "Spa", "Restaurant", "Gym", "Breakfast", "Bar", "Parking"
@@ -109,6 +119,26 @@ const AccommodationsPage = () => {
     fetchHotelData();
   }, [selectedOutboundFlight, navigate, priceRange, minRating, selectedAmenities, isRoundTrip, skipHotels]);
 
+  // Load hotel details when a hotel is selected for viewing
+  useEffect(() => {
+    if (selectedHotelForDetails && detailsOpen) {
+      const loadHotelDetails = async () => {
+        setDetailsLoading(true);
+        try {
+          const details = await getHotelDetails(selectedHotelForDetails);
+          setAdditionalDetails(details);
+        } catch (error) {
+          console.error('Error loading hotel details:', error);
+          toast.error('Failed to load detailed hotel information');
+        } finally {
+          setDetailsLoading(false);
+        }
+      };
+      
+      loadHotelDetails();
+    }
+  }, [selectedHotelForDetails, detailsOpen]);
+
   // Convert Hotel objects to HousingOption format for compatibility with existing bookingStore
   const convertToHousingOption = (hotel: Hotel): HousingOption => {
     return {
@@ -159,6 +189,11 @@ const AccommodationsPage = () => {
     );
   };
 
+  const handleViewDetails = (hotel: Hotel) => {
+    setSelectedHotelForDetails(hotel);
+    setDetailsOpen(true);
+  };
+
   const renderAmenityIcon = (amenity: string) => {
     if (amenity.toLowerCase().includes('wifi')) return <Wifi size={16} className="mr-1" />;
     if (amenity.toLowerCase().includes('breakfast')) return <Coffee size={16} className="mr-1" />;
@@ -167,15 +202,17 @@ const AccommodationsPage = () => {
     return null;
   };
 
+  const openBookingLink = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (selectedHotelForDetails) {
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(selectedHotelForDetails.name + ' ' + selectedHotelForDetails.location)}`, '_blank');
+    }
+  };
+
   if (loading) {
     return (
       <WebLayout title="Loading Accommodations..." showBackButton>
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 size={48} className="animate-spin text-primary mb-4" />
-          <p className="text-center text-gray-600">
-            Searching for the best accommodations in your destination...
-          </p>
-        </div>
+        <HotelsLoading />
       </WebLayout>
     );
   }
@@ -332,19 +369,32 @@ const AccommodationsPage = () => {
                             <span className="text-gray-600 text-sm"> / night</span>
                           </div>
                           
-                          <div className="flex items-center">
-                            <Checkbox
-                              id={`hotel-${hotel.id}`}
-                              checked={isHousingSelected(hotel.id)}
-                              onCheckedChange={() => handleHousingToggle(hotel)}
-                              className="mr-2"
-                            />
-                            <label 
-                              htmlFor={`hotel-${hotel.id}`}
-                              className="text-sm cursor-pointer"
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="flex items-center gap-1.5"
+                              onClick={() => handleViewDetails(hotel)}
                             >
-                              {isHousingSelected(hotel.id) ? 'Selected' : 'Select'}
-                            </label>
+                              <ExternalLink size={14} /> Details
+                            </Button>
+                            
+                            <Button
+                              variant={isHousingSelected(hotel.id) ? "outline" : "default"}
+                              size="sm"
+                              onClick={() => handleHousingToggle(hotel)}
+                              className={isHousingSelected(hotel.id) 
+                                ? "border-green-500 text-green-700" 
+                                : "bg-blue-600"}
+                            >
+                              {isHousingSelected(hotel.id) ? (
+                                <>
+                                  <Check size={14} className="mr-1.5" /> Selected
+                                </>
+                              ) : (
+                                'Select'
+                              )}
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -385,6 +435,34 @@ const AccommodationsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Hotel Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+              <span>{selectedHotelForDetails?.name}</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0" 
+                onClick={() => setDetailsOpen(false)}
+              >
+                <X size={16} />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedHotelForDetails && (
+            <HotelDetails
+              detailsLoading={detailsLoading}
+              hotel={selectedHotelForDetails}
+              additionalDetails={additionalDetails}
+              openBookingLink={openBookingLink}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </WebLayout>
   );
 };
