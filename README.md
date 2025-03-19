@@ -31,3 +31,6 @@ Password: PASSWORD
 
 If you see a message saying "No API key found," go to settings, click up update API keys. Then save changes. You are good to go from here.
 
+
+Link to run project: https://prototype-collab-sandbox.lovable.app/
+
