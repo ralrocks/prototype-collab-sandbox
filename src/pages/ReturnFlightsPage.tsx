@@ -104,11 +104,13 @@ const ReturnFlightsPage = () => {
 
   // Handle load more flights
   const loadMoreFlights = useCallback(async () => {
+    console.log('loadMoreFlights called for return flights', { loadingMore, hasMore, page });
     if (loadingMore || !hasMore) return;
     
     try {
       setLoadingMore(true);
       const nextPage = page + 1;
+      console.log('Fetching more return flights for page:', nextPage);
       
       const newFlights = await fetchFlights(
         to, // Swap from/to for return flights
@@ -116,18 +118,35 @@ const ReturnFlightsPage = () => {
         returnDateValue, 
         undefined, 
         'oneway',
-        nextPage
+        nextPage,
+        10
       );
       
+      console.log('Return flights received for page', nextPage, ':', newFlights.length);
+      
       if (newFlights.length === 0) {
+        console.log('No more return flights available');
         setHasMore(false);
       } else {
-        setReturnFlights(prev => [...prev, ...newFlights]);
+        // Ensure we have unique IDs across pages
+        const updatedFlights = newFlights.map((flight, index) => ({
+          ...flight,
+          id: (nextPage - 1) * 10 + index + 1 // Ensure unique IDs
+        }));
+        
+        setReturnFlights(prev => [...prev, ...updatedFlights]);
         setPage(nextPage);
+        
+        // If we got fewer than 10 results, there are no more to load
+        if (newFlights.length < 10) {
+          console.log('Less than 10 return flights received, setting hasMore to false');
+          setHasMore(false);
+        }
       }
     } catch (err: any) {
-      console.error('Error loading more flights:', err);
+      console.error('Error loading more return flights:', err);
       toast.error('Failed to load more flights');
+      setHasMore(false);
     } finally {
       setLoadingMore(false);
     }
@@ -138,6 +157,8 @@ const ReturnFlightsPage = () => {
     try {
       setLoading(true);
       setError(null);
+      setPage(1);
+      setHasMore(true);
       
       if (!returnDateValue) {
         setError('Return date is missing');
@@ -148,12 +169,20 @@ const ReturnFlightsPage = () => {
       
       console.log('Fetching return flights from:', to, 'to:', from, 'on:', returnDateValue);
       
-      const returnFlightsData = await fetchFlights(to, from, returnDateValue, undefined, 'oneway', 1);
+      const returnFlightsData = await fetchFlights(to, from, returnDateValue, undefined, 'oneway', 1, 10);
       console.log('Return flights received:', returnFlightsData.length);
       
-      setReturnFlights(returnFlightsData);
-      setPage(1);
+      // Ensure all flights have unique IDs
+      const flightsWithUniqueIds = returnFlightsData.map((flight, index) => ({
+        ...flight,
+        id: index + 1 // Start from 1
+      }));
+      
+      setReturnFlights(flightsWithUniqueIds);
+      
+      // Set hasMore based on whether we received a full page
       setHasMore(returnFlightsData.length >= 10);
+      console.log('Setting hasMore for return flights:', returnFlightsData.length >= 10);
     } catch (err: any) {
       console.error('Error fetching return flights:', err);
       if (err.message?.includes('API key not found')) {

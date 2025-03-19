@@ -7,15 +7,20 @@ import { Flight } from '@/types';
 /**
  * Create synthetic flight data when API fails
  */
-export const createSyntheticFlights = (from: string, to: string, count: number = 5): any[] => {
-  console.log(`Creating ${count} synthetic flights from ${from} to ${to}`);
+export const createSyntheticFlights = (from: string, to: string, count: number = 5, page: number = 1): any[] => {
+  console.log(`Creating ${count} synthetic flights from ${from} to ${to} for page ${page}`);
   
   const airlines = [
     'Delta Air Lines', 
     'American Airlines', 
     'United Airlines', 
     'Southwest Airlines',
-    'JetBlue Airways'
+    'JetBlue Airways',
+    'Alaska Airlines',
+    'Spirit Airlines',
+    'Frontier Airlines',
+    'Hawaiian Airlines',
+    'Allegiant Air'
   ];
   
   const aircrafts = [
@@ -23,29 +28,40 @@ export const createSyntheticFlights = (from: string, to: string, count: number =
     'Airbus A320',
     'Boeing 787 Dreamliner',
     'Airbus A321neo',
-    'Embraer E190'
+    'Embraer E190',
+    'Boeing 777-300ER',
+    'Airbus A350-900',
+    'Bombardier CRJ-900',
+    'Airbus A330-300',
+    'Boeing 757-200'
   ];
   
   const flights = [];
   const baseTime = new Date();
   
+  // Offset for generating different flights per page
+  const pageOffset = (page - 1) * count;
+  
   for (let i = 0; i < count; i++) {
-    const airline = airlines[i % airlines.length];
+    const flightIndex = pageOffset + i;
+    const airline = airlines[flightIndex % airlines.length];
     const airlineCode = airline.split(' ')[0].substring(0, 2).toUpperCase();
-    const flightNumber = `${airlineCode}${1000 + Math.floor(Math.random() * 1000)}`;
+    const flightNumber = `${airlineCode}${1000 + flightIndex}`;
     
-    const departureHours = 7 + Math.floor(Math.random() * 10); // 7 AM to 5 PM
+    // Generate different departure times based on page/index
+    const departureHours = (6 + Math.floor(flightIndex / airlines.length) * 2) % 24;
     const departureTime = new Date(baseTime);
-    departureTime.setHours(departureHours, Math.floor(Math.random() * 60));
+    departureTime.setHours(departureHours, (flightIndex * 7) % 60);
     
-    const flightDurationHours = 2 + Math.floor(Math.random() * 4); // 2-5 hours
-    const flightDurationMinutes = Math.floor(Math.random() * 60);
+    const flightDurationHours = 2 + (flightIndex % 5);
+    const flightDurationMinutes = (flightIndex * 11) % 60;
     
     const arrivalTime = new Date(departureTime);
     arrivalTime.setHours(arrivalTime.getHours() + flightDurationHours);
     arrivalTime.setMinutes(arrivalTime.getMinutes() + flightDurationMinutes);
     
-    const price = 150 + Math.floor(Math.random() * 350); // $150-$500
+    // Generate different prices based on page/index
+    const price = 150 + (flightIndex * 17) % 350;
     
     flights.push({
       airline: airline,
@@ -53,20 +69,20 @@ export const createSyntheticFlights = (from: string, to: string, count: number =
       departureTime: departureTime.toISOString(),
       arrivalTime: arrivalTime.toISOString(),
       duration: `PT${flightDurationHours}H${flightDurationMinutes}M`,
-      stops: Math.random() > 0.7 ? 1 : 0, // 30% chance of 1 stop
-      cabin: Math.random() > 0.8 ? 'BUSINESS' : 'ECONOMY', // 20% chance of business class
+      stops: flightIndex % 3 === 0 ? 1 : 0, // Every third flight has a stop
+      cabin: flightIndex % 5 === 0 ? 'BUSINESS' : 'ECONOMY', // Every fifth flight is business class
       price: price,
       departureAirport: from,
       arrivalAirport: to,
-      aircraft: aircrafts[i % aircrafts.length],
+      aircraft: aircrafts[flightIndex % aircrafts.length],
       bookingLink: `https://www.google.com/flights?q=${from}+to+${to}`,
       amenities: ['Wi-Fi', 'Power outlets', 'In-flight entertainment'],
       baggageAllowance: '1 carry-on, 1 personal item, first checked bag $30',
       cancellationPolicy: 'Non-refundable, changes allowed with fee',
-      onTimePerformance: `${80 + Math.floor(Math.random() * 15)}%`,
+      onTimePerformance: `${80 + (flightIndex * 3) % 15}%`,
       terminalInfo: {
-        departure: `Terminal ${1 + (i % 3)}`,
-        arrival: `Terminal ${1 + (i % 4)}`
+        departure: `Terminal ${1 + (flightIndex % 5)}`,
+        arrival: `Terminal ${1 + (flightIndex % 6)}`
       }
     });
   }

@@ -31,40 +31,36 @@ const FlightList = ({
 }: FlightListProps) => {
   const navigate = useNavigate();
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const [observer, setObserver] = useState<IntersectionObserver | null>(null);
   
   useEffect(() => {
-    // Clean up previous observer
-    if (observer) {
-      observer.disconnect();
+    if (!onLoadMore || !hasMore || loading) {
+      return;
     }
     
-    // Create a new intersection observer for infinite scrolling
-    if (onLoadMore && hasMore && !loading) {
-      console.log('Setting up intersection observer for flights');
-      const newObserver = new IntersectionObserver(
-        (entries) => {
-          console.log('Intersection observed:', entries[0].isIntersecting, 'loading:', loading, 'hasMore:', hasMore);
-          if (entries[0].isIntersecting && !loading && hasMore) {
-            console.log('Triggering load more flights');
-            onLoadMore();
-          }
-        },
-        { threshold: 0.1, rootMargin: '100px' }
-      );
-      
-      if (loadMoreRef.current) {
-        console.log('Observing load more element');
-        newObserver.observe(loadMoreRef.current);
-      }
-      
-      setObserver(newObserver);
-      
-      return () => {
-        console.log('Disconnecting flight list observer');
-        newObserver.disconnect();
-      };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        console.log('Flight list intersection observed:', entries[0].isIntersecting, 'loading:', loading, 'hasMore:', hasMore);
+        if (entries[0].isIntersecting && !loading && hasMore) {
+          console.log('Triggering load more flights from observer');
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    );
+    
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      console.log('Observing flight list load more element');
+      observer.observe(currentRef);
     }
+    
+    return () => {
+      console.log('Disconnecting flight list observer');
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+      observer.disconnect();
+    };
   }, [onLoadMore, hasMore, loading, flights.length]);
   
   if (flights.length === 0 && !loading) {
@@ -106,8 +102,9 @@ const FlightList = ({
         </Card>
       )}
       
+      {/* This div is used as the intersection target */}
       {hasMore && (
-        <div ref={loadMoreRef} className="py-4 text-center">
+        <div ref={loadMoreRef} className="py-4 text-center h-20">
           <Button 
             variant="outline" 
             onClick={onLoadMore}

@@ -19,7 +19,7 @@ export const useFlightSearch = () => {
   const departureDate = localStorage.getItem('departureDate') || '';
   
   const loadMoreFlights = useCallback(async () => {
-    console.log('loadMoreFlights called', { loadingMore, hasMore });
+    console.log('loadMoreFlights called', { loadingMore, hasMore, page });
     if (loadingMore || !hasMore) return;
     
     try {
@@ -40,14 +40,28 @@ export const useFlightSearch = () => {
       console.log('Received new flights:', newFlights.length);
       
       if (newFlights.length === 0) {
+        console.log('No more flights available');
         setHasMore(false);
       } else {
-        setOutboundFlights(prev => [...prev, ...newFlights]);
+        // Ensure we have unique IDs across pages
+        const updatedFlights = newFlights.map((flight, index) => ({
+          ...flight,
+          id: (nextPage - 1) * 10 + index + 1 // Ensure unique IDs
+        }));
+        
+        setOutboundFlights(prev => [...prev, ...updatedFlights]);
         setPage(nextPage);
+        
+        // If we got fewer than 10 results, there are no more to load
+        if (newFlights.length < 10) {
+          console.log('Less than 10 flights received, setting hasMore to false');
+          setHasMore(false);
+        }
       }
     } catch (err: any) {
       console.error('Error loading more flights:', err);
       toast.error('Failed to load more flights');
+      setHasMore(false);
     } finally {
       setLoadingMore(false);
     }
@@ -57,15 +71,25 @@ export const useFlightSearch = () => {
     try {
       setLoading(true);
       setError(null);
+      setPage(1);
+      setHasMore(true);
       
       console.log('Fetching outbound flights from:', from, 'to:', to, 'on:', departureDate);
       
       const outboundFlightsData = await fetchFlights(from, to, departureDate, undefined, 'oneway', 1, 10);
       console.log('Outbound flights received:', outboundFlightsData.length);
       
-      setOutboundFlights(outboundFlightsData);
-      setPage(1);
+      // Ensure all flights have unique IDs
+      const flightsWithUniqueIds = outboundFlightsData.map((flight, index) => ({
+        ...flight,
+        id: index + 1 // Start from 1
+      }));
+      
+      setOutboundFlights(flightsWithUniqueIds);
+      
+      // Set hasMore based on whether we received a full page
       setHasMore(outboundFlightsData.length >= 10);
+      console.log('Setting hasMore:', outboundFlightsData.length >= 10);
     } catch (err: any) {
       console.error('Error fetching flights:', err);
       if (err.message?.includes('API key not found')) {
